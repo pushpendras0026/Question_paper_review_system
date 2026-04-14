@@ -1,0 +1,46 @@
+{% extends "core/base.html" %}
+{% block title %}TA Upload Scripts — {{ exam.name }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Upload Answer Scripts — {{ exam.name }} ({{ exam.course.code }})</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-row">
+            <div>
+                <label>Student</label>
+                <select name="student_id" required>
+                    <option value="">Select Student</option>
+                    {% for e in enrolled_students %}
+                    <option value="{{ e.student.id }}">{{ e.student.username }} ({{ e.student.first_name }} {{ e.student.last_name }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>Answer Script (PDF/Image)</label>
+                <input type="file" name="file" required>
+            </div>
+            <div>
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Uploaded Scripts</h2>
+    {% if existing_scripts %}
+    <table>
+        <tr><th>Student</th><th>File</th></tr>
+        {% for s in existing_scripts %}
+        <tr>
+            <td>{{ s.student.username }}</td>
+            <td><a href="{{ s.file.url }}" target="_blank">View</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No scripts uploaded yet</p>
+    {% endif %}
+</div>
+<a href="{% url 'ta_course_detail' assignment.id %}" class="btn btn-secondary">← Back</a>
+{% endblock %}

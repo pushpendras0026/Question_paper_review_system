@@ -1,0 +1,14 @@
+{% extends "core/base.html" %}
+{% block title %}Add Exam{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Add Exam — {{ course.code }}</h2>
+    <form method="post">
+        {% csrf_token %}
+        <label for="id_name">Exam Name</label>
+        {{ form.name }}
+        <button type="submit" class="btn btn-primary mt-8">Add Exam</button>
+    </form>
+</div>
+<a href="{% url 'professor_course_detail' course.id %}" class="btn btn-secondary">← Back</a>
+{% endblock %}

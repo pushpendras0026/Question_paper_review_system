@@ -1,0 +1,44 @@
+{% extends "core/base.html" %}
+{% block title %}{{ course.code }} — Completed{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>{{ course.code }} — {{ course.name }} (Completed)</h2>
+    <p class="text-sm text-muted">{{ course.semester }}</p>
+</div>
+
+<div class="card">
+    <h2>Grades</h2>
+    {% if enrollments %}
+    <table>
+        <tr><th>Student</th><th>Grade</th></tr>
+        {% for e in enrollments %}
+        <tr>
+            <td>{{ e.student.username }} ({{ e.student.first_name }} {{ e.student.last_name }})</td>
+            <td><strong>{{ e.grade|default:"-" }}</strong></td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No students</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Answer Scripts</h2>
+    {% if scripts %}
+    <table>
+        <tr><th>Exam</th><th>Student</th><th>Script</th></tr>
+        {% for s in scripts %}
+        <tr>
+            <td>{{ s.exam.name }}</td>
+            <td>{{ s.student.username }}</td>
+            <td><a href="{{ s.file.url }}" target="_blank">View</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No answer scripts</p>
+    {% endif %}
+</div>
+<a href="{% url 'professor_dashboard' %}" class="btn btn-secondary">← Back to Dashboard</a>
+{% endblock %}

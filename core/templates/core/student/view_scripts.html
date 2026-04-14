@@ -1,0 +1,63 @@
+{% extends "core/base.html" %}
+{% block title %}{{ exam.name }} — Scripts{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>{{ course.code }} — {{ exam.name }}</h2>
+
+    {% if script %}
+    <h3>Your Answer Script</h3>
+    {% if '.jpg' in script.file.url.lower or '.png' in script.file.url.lower or '.jpeg' in script.file.url.lower %}
+        <img src="{{ script.file.url }}" alt="Answer Script Image" style="max-width: 100%; max-height: 800px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;">
+        <br>
+    {% endif %}
+    <p><a href="{{ script.file.url }}" target="_blank" class="btn btn-primary btn-sm">Download Script</a></p>
+
+    <h3 class="mt-16">Your Marks</h3>
+    {% if marks %}
+    <table>
+        <tr><th>Section</th><th>Marks</th></tr>
+        {% for m in marks %}
+        <tr>
+            <td>{{ m.section.name|default:"Total" }}</td>
+            <td>{{ m.marks }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="text-sm text-muted">Marks not yet available</p>
+    {% endif %}
+
+    <h3 class="mt-16">Queries</h3>
+    {% if can_raise_query %}
+        <a href="{% url 'student_raise_query' script.id %}" class="btn btn-success btn-sm mb-8">Raise New Query</a>
+    {% else %}
+        <p class="text-sm text-danger mb-8" style="color: red;">The query window is currently closed.</p>
+    {% endif %}
+    {% if queries %}
+    <table>
+        <tr><th>Query</th><th>Status</th><th>Response</th></tr>
+        {% for q in queries %}
+        <tr>
+            <td>{{ q.text }}</td>
+            <td>
+                {% if q.is_resolved %}
+                <span class="badge badge-approved">Resolved</span>
+                {% else %}
+                <span class="badge badge-pending">Pending</span>
+                {% endif %}
+            </td>
+            <td>{{ q.response|default:"-" }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="text-sm text-muted mt-8">No queries raised</p>
+    {% endif %}
+
+    {% else %}
+    <p class="empty">Answer script not uploaded yet</p>
+    {% endif %}
+</div>
+
+<a href="{% url 'student_course_detail' course.id %}" class="btn btn-secondary">← Back to Course</a>
+{% endblock %}

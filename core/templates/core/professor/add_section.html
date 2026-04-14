@@ -1,0 +1,20 @@
+{% extends "core/base.html" %}
+{% block title %}Add Section{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Add Section — {{ exam.name }} ({{ exam.course.code }})</h2>
+    <h3>Existing Sections</h3>
+    {% for s in exam.sections.all %}
+    <p>• {{ s.name }}</p>
+    {% empty %}
+    <p class="text-sm text-muted">No sections yet</p>
+    {% endfor %}
+    <form method="post" class="mt-16">
+        {% csrf_token %}
+        <label for="id_name">Section Name</label>
+        {{ form.name }}
+        <button type="submit" class="btn btn-primary mt-8">Add Section</button>
+    </form>
+</div>
+<a href="{% url 'professor_course_detail' exam.course_id %}" class="btn btn-secondary">← Back</a>
+{% endblock %}

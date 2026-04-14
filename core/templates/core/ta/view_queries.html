@@ -1,0 +1,36 @@
+{% extends "core/base.html" %}
+{% block title %}TA — Queries{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Student Queries — {{ assignment.course.code }}</h2>
+    {% if queries %}
+    <table>
+        <tr><th>Exam</th><th>Student</th><th>Query</th><th>Status</th><th>Action</th></tr>
+        {% for q in queries %}
+        <tr>
+            <td>{{ q.answer_script.exam.name }}</td>
+            <td>{{ q.raised_by.username }}</td>
+            <td>{{ q.text|truncatewords:15 }}</td>
+            <td>
+                {% if q.is_resolved %}
+                <span class="badge badge-approved">Resolved</span>
+                {% else %}
+                <span class="badge badge-pending">Open</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if not q.is_resolved %}
+                <a href="{% url 'ta_respond_query' q.id %}" class="btn btn-primary btn-sm">Respond</a>
+                {% else %}
+                <span class="text-sm text-muted">{{ q.response|truncatewords:10 }}</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No queries</p>
+    {% endif %}
+</div>
+<a href="{% url 'ta_course_detail' assignment.id %}" class="btn btn-secondary">← Back</a>
+{% endblock %}

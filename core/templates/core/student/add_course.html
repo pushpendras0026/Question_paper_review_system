@@ -1,0 +1,45 @@
+{% extends "core/base.html" %}
+{% block title %}Add Course{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Available Courses ({{ current_semester }})</h2>
+    {% if available_courses %}
+    <table>
+        <tr><th>Code</th><th>Course</th><th>Professor</th><th>Action</th></tr>
+        {% for course in available_courses %}
+        <tr>
+            <td>{{ course.code }}</td>
+            <td>{{ course.name }}</td>
+            <td>{{ course.professor.username }}</td>
+            <td>
+                <form method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="course_id" value="{{ course.id }}">
+                    <button type="submit" class="btn btn-primary btn-sm">Request Enrollment</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No available courses for this semester</p>
+    {% endif %}
+</div>
+
+{% if pending_enrollments %}
+<div class="card">
+    <h2>Pending Requests</h2>
+    <table>
+        <tr><th>Course</th><th>Status</th></tr>
+        {% for e in pending_enrollments %}
+        <tr>
+            <td>{{ e.course.code }} - {{ e.course.name }}</td>
+            <td><span class="badge badge-pending">{{ e.get_status_display }}</span></td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
+
+<a href="{% url 'student_dashboard' %}" class="btn btn-secondary">← Back to Dashboard</a>
+{% endblock %}

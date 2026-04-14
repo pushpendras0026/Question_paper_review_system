@@ -1,0 +1,27 @@
+{% extends "core/base.html" %}
+{% block title %}{{ course.code }} — Past Course{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>{{ course.code }} — {{ course.name }} (Completed)</h2>
+    <p class="text-sm text-muted">{{ course.semester }} | Grade: <strong>{{ enrollment.grade|default:"Not assigned" }}</strong></p>
+</div>
+
+<div class="card">
+    <h2>Answer Scripts</h2>
+    {% if scripts %}
+    <table>
+        <tr><th>Exam</th><th>Script</th></tr>
+        {% for s in scripts %}
+        <tr>
+            <td>{{ s.exam.name }}</td>
+            <td><a href="{{ s.file.url }}" target="_blank" class="btn btn-primary btn-sm">Download</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No answer scripts</p>
+    {% endif %}
+</div>
+
+<a href="{% url 'student_dashboard' %}" class="btn btn-secondary">← Back to Dashboard</a>
+{% endblock %}

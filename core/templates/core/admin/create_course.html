@@ -1,0 +1,16 @@
+{% extends "core/base.html" %}
+{% block title %}Create Course{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Create New Course</h2>
+    <form method="post">
+        {% csrf_token %}
+        <label>Course Code</label>{{ form.code }}
+        <label>Course Name</label>{{ form.name }}
+        <label>Semester</label>{{ form.semester }}
+        <label>Professor</label>{{ form.professor }}
+        <button type="submit" class="btn btn-primary mt-8">Create Course</button>
+    </form>
+</div>
+<a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">← Back</a>
+{% endblock %}

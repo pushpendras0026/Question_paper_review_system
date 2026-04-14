@@ -1,0 +1,85 @@
+{% extends "core/base.html" %}
+{% block title %}Professor Dashboard{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Active Courses</h2>
+    {% if active_courses %}
+    <table>
+        <tr><th>Code</th><th>Course</th><th>Semester</th><th>Actions</th></tr>
+        {% for c in active_courses %}
+        <tr>
+            <td>{{ c.code }}</td>
+            <td>{{ c.name }}</td>
+            <td>{{ c.semester }}</td>
+            <td><a href="{% url 'professor_course_detail' c.id %}" class="btn btn-primary btn-sm">Manage</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No active courses</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Completed Courses</h2>
+    {% if completed_courses %}
+    <table>
+        <tr><th>Code</th><th>Course</th><th>Semester</th><th>Actions</th></tr>
+        {% for c in completed_courses %}
+        <tr>
+            <td>{{ c.code }}</td>
+            <td>{{ c.name }}</td>
+            <td>{{ c.semester }}</td>
+            <td><a href="{% url 'professor_completed_course' c.id %}" class="btn btn-secondary btn-sm">View</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No completed courses</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Pending Approval Requests</h2>
+    {% if prof_requests or advisor_requests %}
+
+    {% if prof_requests %}
+    <h3>As Professor</h3>
+    <table>
+        <tr><th>Student</th><th>Course</th><th>Actions</th></tr>
+        {% for e in prof_requests %}
+        <tr>
+            <td>{{ e.student.username }}</td>
+            <td>{{ e.course.code }} — {{ e.course.name }}</td>
+            <td>
+                <a href="{% url 'professor_approve_enrollment' e.id %}?type=professor" class="btn btn-success btn-sm">Approve</a>
+                <a href="{% url 'professor_reject_enrollment' e.id %}" class="btn btn-danger btn-sm">Reject</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+
+    {% if advisor_requests %}
+    <h3 class="mt-16">As Faculty Advisor</h3>
+    <table>
+        <tr><th>Student</th><th>Course</th><th>Actions</th></tr>
+        {% for e in advisor_requests %}
+        <tr>
+            <td>{{ e.student.username }}</td>
+            <td>{{ e.course.code }} — {{ e.course.name }}</td>
+            <td>
+                <a href="{% url 'professor_approve_enrollment' e.id %}?type=advisor" class="btn btn-success btn-sm">Approve</a>
+                <a href="{% url 'professor_reject_enrollment' e.id %}" class="btn btn-danger btn-sm">Reject</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+
+    {% else %}
+    <p class="empty">No pending requests</p>
+    {% endif %}
+    <a href="{% url 'professor_approve_requests' %}" class="btn btn-primary btn-sm mt-8">View All Requests</a>
+</div>
+{% endblock %}

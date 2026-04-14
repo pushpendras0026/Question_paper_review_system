@@ -1,0 +1,42 @@
+{% extends "core/base.html" %}
+{% block title %}Manage Courses{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>All Courses</h2>
+    {% if courses %}
+    <table>
+        <tr><th>Code</th><th>Name</th><th>Semester</th><th>Professor</th><th>Status</th><th>Change Professor</th></tr>
+        {% for c in courses %}
+        <tr>
+            <td>{{ c.code }}</td>
+            <td>{{ c.name }}</td>
+            <td>{{ c.semester }}</td>
+            <td>{{ c.professor.username }}</td>
+            <td>
+                {% if c.is_active %}
+                <span class="badge badge-active">Active</span>
+                {% else %}
+                <span class="badge badge-rejected">Ended</span>
+                {% endif %}
+            </td>
+            <td>
+                <form method="post" style="display:flex;gap:4px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="course_id" value="{{ c.id }}">
+                    <select name="professor_id" style="width:auto;">
+                        {% for p in professors %}
+                        <option value="{{ p.id }}" {% if p.id == c.professor_id %}selected{% endif %}>{{ p.username }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-primary btn-sm">Update</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No courses</p>
+    {% endif %}
+</div>
+<a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">← Back</a>
+{% endblock %}

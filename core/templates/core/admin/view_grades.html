@@ -1,0 +1,44 @@
+{% extends "core/base.html" %}
+{% block title %}Course Grade Card{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Grade Card for {{ course.code }}</h2>
+    <p><strong>Professor:</strong> {{ course.professor.username }}</p>
+    
+    <form method="post" class="mt-16">
+        {% csrf_token %}
+        <label>Set Grade Card Submission Deadline:</label>
+        {{ form.grade_card_deadline }}
+        <button type="submit" class="btn btn-primary btn-sm mt-8">Set Deadline</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Student Grades</h3>
+    {% if enrollments %}
+    <table>
+        <tr>
+            <th>Roll Number</th>
+            <th>Name</th>
+            <th>Grade</th>
+        </tr>
+        {% for en in enrollments %}
+        <tr>
+            <td>{{ en.student.roll_number }}</td>
+            <td>{{ en.student.username }}</td>
+            <td>
+                {% if en.grade %}
+                    <strong>{{ en.grade }}</strong>
+                {% else %}
+                    <span class="text-muted">Not assigned</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+        <p class="empty">No approved enrollments for this course.</p>
+    {% endif %}
+</div>
+<a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">← Back</a>
+{% endblock %}

@@ -1,0 +1,151 @@
+{% extends "core/base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+
+<style>
+.dept-section { margin-bottom: 32px; }
+.dept-header {
+    background: linear-gradient(135deg, #1a1f35, #2d3561);
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 8px 8px 0 0;
+    font-weight: 700;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.dept-badge {
+    background: #4f6ef7;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+.sem-group { margin-bottom: 12px; }
+.sem-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #7b8cb0;
+    padding: 4px 14px;
+    background: #f0f3ff;
+    border-left: 3px solid #4f6ef7;
+    margin-bottom: 0;
+}
+.dept-table { border-radius: 0; margin-bottom: 0; }
+.dept-table th { background: #f8f9ff; font-size: 0.82rem; padding: 8px 12px; }
+.dept-table td { padding: 8px 12px; font-size: 0.88rem; vertical-align: middle; }
+.action-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+</style>
+
+<div class="card">
+    <h2>Admin Actions</h2>
+    <div class="action-bar">
+        <a href="{% url 'admin_create_course' %}" class="btn btn-success">+ Create Course</a>
+        <a href="{% url 'admin_manage_courses' %}" class="btn btn-primary">Manage Courses</a>
+        <a href="{% url 'admin_assign_advisor' %}" class="btn btn-primary">Assign Advisor</a>
+        <a href="{% url 'admin_add_faculty' %}" class="btn btn-success">+ Add Faculty</a>
+        <a href="{% url 'admin_add_student' %}" class="btn btn-success">+ Add Student</a>
+        <a href="{% url 'admin_force_enroll' %}" class="btn btn-primary">Force Enroll</a>
+    </div>
+</div>
+
+<!-- ===== ACTIVE COURSES BY DEPARTMENT ===== -->
+<div class="card">
+    <h2>Active Courses <span class="dept-badge" style="background:#1d9e74;color:#fff;">By Department</span></h2>
+
+    {% if active_by_dept %}
+        {% for dept, semesters in active_by_dept.items %}
+        <div class="dept-section">
+            <div class="dept-header">
+                🏛 {{ dept }}
+                <span class="dept-badge">
+                    {% for sem, courses in semesters.items %}{% for c in courses %}{% endfor %}{% endfor %}
+                    Active
+                </span>
+            </div>
+            {% for sem, courses in semesters.items %}
+            <div class="sem-group">
+                <div class="sem-label">Semester {{ sem }}</div>
+                <table class="dept-table">
+                    <tr>
+                        <th>Code</th><th>Course Name</th><th>Professor</th><th>Actions</th>
+                    </tr>
+                    {% for c in courses %}
+                    <tr>
+                        <td><strong>{{ c.code }}</strong></td>
+                        <td>{{ c.name }}</td>
+                        <td>{{ c.professor.username }}</td>
+                        <td>
+                            <a href="{% url 'admin_view_course_grades' c.id %}" class="btn btn-primary btn-sm">Grade Card</a>
+                            <a href="{% url 'admin_end_course' c.id %}" class="btn btn-danger btn-sm"
+                               onclick="return confirm('End course {{ c.code }}?')">End</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="empty">No active courses.</p>
+    {% endif %}
+</div>
+
+<!-- ===== ENDED COURSES BY DEPARTMENT ===== -->
+<div class="card">
+    <h2>Ended Courses <span class="dept-badge" style="background:#888;color:#fff;">By Department</span></h2>
+
+    {% if inactive_by_dept %}
+        {% for dept, semesters in inactive_by_dept.items %}
+        <div class="dept-section">
+            <div class="dept-header" style="background: linear-gradient(135deg,#333,#555);">
+                📁 {{ dept }}
+            </div>
+            {% for sem, courses in semesters.items %}
+            <div class="sem-group">
+                <div class="sem-label">Semester {{ sem }}</div>
+                <table class="dept-table">
+                    <tr>
+                        <th>Code</th><th>Course Name</th><th>Professor</th><th>Actions</th>
+                    </tr>
+                    {% for c in courses %}
+                    <tr>
+                        <td><strong>{{ c.code }}</strong></td>
+                        <td>{{ c.name }}</td>
+                        <td>{{ c.professor.username }}</td>
+                        <td>
+                            <a href="{% url 'admin_view_course_grades' c.id %}" class="btn btn-primary btn-sm">Grade Card</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="empty">No ended courses.</p>
+    {% endif %}
+</div>
+
+<!-- ===== ADVISOR ASSIGNMENTS ===== -->
+<div class="card">
+    <h2>Faculty Advisor Assignments</h2>
+    {% if advisor_assignments %}
+    <table>
+        <tr><th>Student (Roll No.)</th><th>Advisor</th><th>Department</th></tr>
+        {% for fa in advisor_assignments %}
+        <tr>
+            <td>{{ fa.student.username }} <span class="text-sm text-muted">({{ fa.student.roll_number|default:"—" }})</span></td>
+            <td>{{ fa.advisor.username }}</td>
+            <td>{{ fa.student.department|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No advisor assignments yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

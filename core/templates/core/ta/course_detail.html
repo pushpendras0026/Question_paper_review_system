@@ -1,0 +1,55 @@
+{% extends "core/base.html" %}
+{% block title %}TA — {{ course.code }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>{{ course.code }} — {{ course.name }}</h2>
+    <p class="text-sm text-muted">{{ course.semester }} | Your permissions below</p>
+</div>
+
+<div class="card">
+    <h2>Your Powers</h2>
+    <table>
+        <tr><th>Permission</th><th>Status</th></tr>
+        <tr><td>Upload Answer Scripts</td><td>{% if assignment.can_upload_scripts %}<span class="badge badge-approved">Granted</span>{% else %}<span class="badge badge-rejected">Not Granted</span>{% endif %}</td></tr>
+        <tr><td>Resolve Queries & Update Marks</td><td>{% if assignment.can_resolve_queries %}<span class="badge badge-approved">Granted</span>{% else %}<span class="badge badge-rejected">Not Granted</span>{% endif %}</td></tr>
+        <tr><td>Update Marks</td><td>{% if assignment.can_update_marks %}<span class="badge badge-approved">Granted</span>{% else %}<span class="badge badge-rejected">Not Granted</span>{% endif %}</td></tr>
+        <tr><td>Assign Grades</td><td>{% if assignment.can_assign_grades %}<span class="badge badge-approved">Granted</span>{% else %}<span class="badge badge-rejected">Not Granted</span>{% endif %}</td></tr>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Exams</h2>
+    {% if exams %}
+    <table>
+        <tr><th>Exam</th><th>Actions</th></tr>
+        {% for exam in exams %}
+        <tr>
+            <td>{{ exam.name }}</td>
+            <td>
+                {% if assignment.can_upload_scripts %}
+                <a href="{% url 'ta_upload_scripts' assignment.id exam.id %}" class="btn btn-primary btn-sm">Upload Scripts</a>
+                {% endif %}
+                {% if assignment.can_update_marks %}
+                <a href="{% url 'ta_update_marks' assignment.id exam.id %}" class="btn btn-primary btn-sm">Update Marks</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No exams added yet</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Other Actions</h2>
+    {% if assignment.can_resolve_queries %}
+    <a href="{% url 'ta_view_queries' assignment.id %}" class="btn btn-primary btn-sm">View & Resolve Queries</a>
+    {% endif %}
+    {% if assignment.can_assign_grades and not course.is_active %}
+    <a href="{% url 'ta_assign_grades' assignment.id %}" class="btn btn-success btn-sm">Assign Grades</a>
+    {% endif %}
+</div>
+
+<a href="{% url 'ta_dashboard' %}" class="btn btn-secondary">← Back to Dashboard</a>
+{% endblock %}

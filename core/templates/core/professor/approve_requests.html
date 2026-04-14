@@ -1,0 +1,273 @@
+{% extends "core/base.html" %}
+{% block title %}Approve Enrollment Requests{% endblock %}
+{% block content %}
+
+<style>
+.section-header {
+    background: linear-gradient(135deg, #1a1f35, #2d3561);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.section-header span { font-size: 0.85rem; opacity: 0.8; }
+.dept-block {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+.dept-label {
+    background: #f0f4ff;
+    padding: 8px 16px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #2d3561;
+    border-bottom: 1px solid #dde5ff;
+}
+.sem-block { border-bottom: 1px solid #eef0f8; }
+.sem-label {
+    background: #fafbff;
+    padding: 6px 16px 6px 28px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #7b8cb0;
+    border-bottom: 1px dashed #e5eaf5;
+}
+.course-block { padding: 0 0 12px 0; }
+.course-label {
+    padding: 8px 16px 4px 28px;
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #3a4068;
+    border-bottom: 1px solid #f0f3ff;
+    margin-bottom: 4px;
+}
+.req-table { margin: 0; border-radius: 0; }
+.req-table th { background: #f8f9ff; font-size: 0.8rem; padding: 7px 14px; }
+.req-table td { padding: 7px 14px; font-size: 0.86rem; vertical-align: middle; }
+.bulk-bar {
+    background: #fff8ee;
+    border: 1px solid #ffd9a0;
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.bulk-bar input[type="text"] {
+    flex: 1;
+    min-width: 220px;
+    margin: 0;
+    padding: 6px 10px;
+}
+.select-all-row { font-size: 0.82rem; color: #555; }
+</style>
+
+<!-- ================== PROFESSOR REQUESTS ================== -->
+<div class="card">
+    <div class="section-header">
+        <h2 style="margin:0; color:#fff;">📋 Pending Requests — As Professor</h2>
+        <span>{{ total_prof }} pending</span>
+    </div>
+
+    {% if prof_groups %}
+
+    <!-- Bulk Actions Bar -->
+    <form method="post" action="{% url 'professor_bulk_enrollment_action' %}" id="bulk-prof-form">
+        {% csrf_token %}
+        <input type="hidden" name="type" value="professor">
+
+        <div class="bulk-bar">
+            <strong>Bulk Action on Selected:</strong>
+            <input type="text" name="reason" placeholder="Rejection reason (required for Reject)" id="prof-reason">
+            <button type="submit" name="action" value="approve" class="btn btn-success btn-sm"
+                onclick="return confirmBulk('approve','prof')">✓ Approve Selected</button>
+            <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm"
+                onclick="return confirmBulk('reject','prof')">✗ Reject Selected</button>
+        </div>
+
+        {% for dept, semesters in prof_groups.items %}
+        <div class="dept-block">
+            <div class="dept-label">
+                🏛 {{ dept }}
+                <label style="float:right; font-weight:400; font-size:0.8rem; cursor:pointer;">
+                    <input type="checkbox" class="select-dept" data-dept="dept-prof-{{ forloop.counter }}"> Select all in dept
+                </label>
+            </div>
+            {% for sem, courses in semesters.items %}
+            <div class="sem-block">
+                <div class="sem-label">
+                    Semester {{ sem }}
+                    <label style="float:right; font-weight:400; cursor:pointer;">
+                        <input type="checkbox" class="select-sem" data-sem="sem-prof-{{ forloop.parentloop.counter }}-{{ forloop.counter }}"> Select all in Sem
+                    </label>
+                </div>
+                {% for ckey, cdata in courses.items %}
+                <div class="course-block">
+                    <div class="course-label">
+                        {{ cdata.course.code }} — {{ cdata.course.name }}
+                        <label style="float:right; font-weight:400; font-size:0.8rem; cursor:pointer;">
+                            <input type="checkbox" class="select-course" data-course="course-prof-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}-{{ forloop.counter }}"> Select all in course
+                        </label>
+                    </div>
+                    <table class="req-table">
+                        <tr><th><input type="checkbox" style="margin:0"></th><th>Roll No.</th><th>Student</th><th>Single Actions</th></tr>
+                        {% for e in cdata.enrollments %}
+                        <tr class="course-prof-{{ forloop.parentloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}
+                                         sem-prof-{{ forloop.parentloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.parentloop.counter }}
+                                         dept-prof-{{ forloop.parentloop.parentloop.parentloop.counter }}">
+                            <td><input type="checkbox" name="enrollment_ids" value="{{ e.id }}" class="enroll-chk"></td>
+                            <td>{{ e.student.roll_number|default:"—" }}</td>
+                            <td>{{ e.student.username }} <small class="text-muted">{{ e.student.first_name }} {{ e.student.last_name }}</small></td>
+                            <td>
+                                <a href="{% url 'professor_approve_enrollment' e.id %}?type=professor" class="btn btn-success btn-sm">✓ Approve</a>
+                                <form method="post" action="{% url 'professor_reject_enrollment' e.id %}" style="display:inline;margin:0;"
+                                      onsubmit="return document.getElementById('rej-{{ e.id }}').value.trim()!==''||alert('Rejection reason required')">
+                                    {% csrf_token %}
+                                    <input type="text" id="rej-{{ e.id }}" name="reason" placeholder="Reason…" required
+                                           style="width:130px;margin:0;padding:3px 6px;display:inline-block;">
+                                    <button type="submit" class="btn btn-danger btn-sm">✗ Reject</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </form>
+
+    {% else %}
+    <p class="empty">No pending requests as professor.</p>
+    {% endif %}
+</div>
+
+
+<!-- ================== ADVISOR REQUESTS ================== -->
+<div class="card">
+    <div class="section-header" style="background: linear-gradient(135deg,#1a3528,#2d6150);">
+        <h2 style="margin:0;color:#fff;">🧑‍🏫 Pending Requests — As Faculty Advisor</h2>
+        <span>{{ total_advisor }} pending</span>
+    </div>
+
+    {% if advisor_groups %}
+
+    <form method="post" action="{% url 'professor_bulk_enrollment_action' %}" id="bulk-adv-form">
+        {% csrf_token %}
+        <input type="hidden" name="type" value="advisor">
+
+        <div class="bulk-bar" style="background:#eefff6;border-color:#a3e6c7;">
+            <strong>Bulk Action on Selected:</strong>
+            <input type="text" name="reason" placeholder="Rejection reason (required for Reject)" id="adv-reason">
+            <button type="submit" name="action" value="approve" class="btn btn-success btn-sm"
+                onclick="return confirmBulk('approve','adv')">✓ Approve Selected</button>
+            <button type="submit" name="action" value="reject" class="btn btn-danger btn-sm"
+                onclick="return confirmBulk('reject','adv')">✗ Reject Selected</button>
+        </div>
+
+        {% for dept, semesters in advisor_groups.items %}
+        <div class="dept-block">
+            <div class="dept-label" style="background:#f0fff8;color:#1a5c40;">
+                🏛 {{ dept }}
+                <label style="float:right;font-weight:400;font-size:0.8rem;cursor:pointer;">
+                    <input type="checkbox" class="select-dept-adv" data-dept="dept-adv-{{ forloop.counter }}"> Select all in dept
+                </label>
+            </div>
+            {% for sem, courses in semesters.items %}
+            <div class="sem-block">
+                <div class="sem-label">Semester {{ sem }}</div>
+                {% for ckey, cdata in courses.items %}
+                <div class="course-block">
+                    <div class="course-label">{{ cdata.course.code }} — {{ cdata.course.name }}</div>
+                    <table class="req-table">
+                        <tr><th></th><th>Roll No.</th><th>Student</th><th>Single Actions</th></tr>
+                        {% for e in cdata.enrollments %}
+                        <tr class="dept-adv-{{ forloop.parentloop.parentloop.parentloop.counter }}">
+                            <td><input type="checkbox" name="enrollment_ids" value="{{ e.id }}" class="enroll-chk-adv"></td>
+                            <td>{{ e.student.roll_number|default:"—" }}</td>
+                            <td>{{ e.student.username }} <small class="text-muted">{{ e.student.first_name }} {{ e.student.last_name }}</small></td>
+                            <td>
+                                <a href="{% url 'professor_approve_enrollment' e.id %}?type=advisor" class="btn btn-success btn-sm">✓ Approve</a>
+                                <form method="post" action="{% url 'professor_reject_enrollment' e.id %}" style="display:inline;margin:0;">
+                                    {% csrf_token %}
+                                    <input type="text" name="reason" placeholder="Reason…" required
+                                           style="width:130px;margin:0;padding:3px 6px;display:inline-block;">
+                                    <button type="submit" class="btn btn-danger btn-sm">✗ Reject</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </table>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </form>
+
+    {% else %}
+    <p class="empty">No pending requests as advisor.</p>
+    {% endif %}
+</div>
+
+<script>
+// Checkbox cascading — select all in dept/sem/course
+document.addEventListener('DOMContentLoaded', function() {
+    // Professor form selectors
+    document.querySelectorAll('.select-dept').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            var cls = this.dataset.dept;
+            document.querySelectorAll('tr.' + cls + ' input[type=checkbox]').forEach(function(c){ c.checked = cb.checked; });
+        });
+    });
+    document.querySelectorAll('.select-sem').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            var cls = this.dataset.sem;
+            document.querySelectorAll('tr.' + cls + ' input[type=checkbox]').forEach(function(c){ c.checked = cb.checked; });
+        });
+    });
+    document.querySelectorAll('.select-course').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            var cls = this.dataset.course;
+            document.querySelectorAll('tr.' + cls + ' input[type=checkbox]').forEach(function(c){ c.checked = cb.checked; });
+        });
+    });
+    // Advisor form selectors
+    document.querySelectorAll('.select-dept-adv').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+            var cls = this.dataset.dept;
+            document.querySelectorAll('tr.' + cls + ' input[type=checkbox]').forEach(function(c){ c.checked = cb.checked; });
+        });
+    });
+});
+
+function confirmBulk(action, form_id) {
+    var checked = document.querySelectorAll(
+        '#bulk-' + form_id + '-form input[name="enrollment_ids"]:checked'
+    );
+    if (checked.length === 0) {
+        alert('Please select at least one enrollment first.');
+        return false;
+    }
+    if (action === 'reject') {
+        var reasonField = document.getElementById(form_id + '-reason');
+        if (!reasonField || reasonField.value.trim() === '') {
+            alert('Please enter a common rejection reason before bulk rejecting.');
+            return false;
+        }
+        return confirm('Reject ' + checked.length + ' enrollment(s) with reason: "' + reasonField.value.trim() + '"?');
+    }
+    return confirm('Approve ' + checked.length + ' enrollment(s)?');
+}
+</script>
+{% endblock %}

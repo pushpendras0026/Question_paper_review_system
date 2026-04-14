@@ -1,0 +1,15 @@
+{% extends "core/base.html" %}
+{% block title %}Raise Query{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Raise Query — {{ script.exam.name }}</h2>
+    <p class="text-sm text-muted mb-8">{{ script.exam.course.code }} — {{ script.exam.course.name }}</p>
+    <form method="post">
+        {% csrf_token %}
+        <label for="id_text">Your Query</label>
+        {{ form.text }}
+        <button type="submit" class="btn btn-primary mt-8">Submit Query</button>
+    </form>
+</div>
+<a href="{% url 'student_view_scripts' script.exam.course_id script.exam_id %}" class="btn btn-secondary">← Back</a>
+{% endblock %}

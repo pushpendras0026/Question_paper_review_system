@@ -1,0 +1,22 @@
+{% extends "core/base.html" %}
+{% block title %}Search Results{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Search Results for "{{ query }}"</h2>
+    {% if courses %}
+        <table>
+            <tr><th>Code</th><th>Name</th><th>Professor</th><th>Department</th></tr>
+            {% for course in courses %}
+            <tr>
+                <td>{{ course.code }}</td>
+                <td>{{ course.name }}</td>
+                <td>{{ course.professor.username }}</td>
+                <td>{{ course.department|default:"N/A" }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p class="empty">No courses found matching your query.</p>
+    {% endif %}
+</div>
+{% endblock %}

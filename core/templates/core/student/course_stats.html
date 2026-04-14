@@ -1,0 +1,48 @@
+{% extends "core/base.html" %}
+{% block title %}{{ course.code }} — Stats{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>{{ course.code }} — {{ course.name }} — Statistics</h2>
+    <p class="text-sm text-muted">{{ course.semester }}</p>
+</div>
+
+<div class="tabs">
+    <a href="{% url 'student_course_detail' course.id %}" class="tab">Answer Scripts</a>
+    <a href="{% url 'student_course_stats' course.id %}" class="tab active">Stats</a>
+</div>
+
+<div class="card">
+    <h2>Overall Course Stats</h2>
+    <table>
+        <tr><th>Your Total</th><th>Mean</th><th>Median</th><th>Percentile</th></tr>
+        <tr>
+            <td><strong>{{ student_total }}</strong></td>
+            <td>{{ overall_mean }}</td>
+            <td>{{ overall_median }}</td>
+            <td>{{ overall_percentile }}{% if overall_percentile != '-' %}%{% endif %}</td>
+        </tr>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Per-Exam Stats</h2>
+    {% if exam_stats %}
+    <table>
+        <tr><th>Exam</th><th>Your Marks</th><th>Mean</th><th>Median</th><th>Percentile</th></tr>
+        {% for es in exam_stats %}
+        <tr>
+            <td>{{ es.exam.name }}</td>
+            <td><strong>{{ es.student_marks }}</strong></td>
+            <td>{{ es.mean }}</td>
+            <td>{{ es.median }}</td>
+            <td>{{ es.percentile }}{% if es.percentile != '-' %}%{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No exam data available</p>
+    {% endif %}
+</div>
+
+<a href="{% url 'student_dashboard' %}" class="btn btn-secondary">← Back to Dashboard</a>
+{% endblock %}

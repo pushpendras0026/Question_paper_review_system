@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Question Paper Review System{% endblock %}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; line-height: 1.6; }
+        .navbar { background: #2c3e50; color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar h1 { font-size: 18px; }
+        .navbar a { color: #ecf0f1; text-decoration: none; margin-left: 16px; font-size: 14px; }
+        .navbar a:hover { text-decoration: underline; }
+        .container { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
+        .card { background: white; border: 1px solid #ddd; border-radius: 6px; padding: 20px; margin-bottom: 16px; }
+        .card h2 { font-size: 18px; margin-bottom: 12px; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+        .card h3 { font-size: 15px; margin-bottom: 8px; color: #34495e; }
+        table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+        th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+        th { background: #f8f9fa; font-weight: 600; }
+        .btn { display: inline-block; padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; text-decoration: none; color: white; }
+        .btn-primary { background: #3498db; }
+        .btn-primary:hover { background: #2980b9; }
+        .btn-success { background: #27ae60; }
+        .btn-success:hover { background: #219a52; }
+        .btn-danger { background: #e74c3c; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-secondary { background: #7f8c8d; }
+        .btn-secondary:hover { background: #6c7a7b; }
+        .btn-sm { padding: 4px 10px; font-size: 12px; }
+        form { margin-top: 8px; }
+        input[type="text"], input[type="password"], input[type="number"], input[type="file"],
+        select, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; margin-bottom: 8px; }
+        label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: #555; }
+        .messages { list-style: none; margin-bottom: 16px; }
+        .messages li { padding: 10px 14px; border-radius: 4px; margin-bottom: 6px; font-size: 14px; }
+        .messages .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .messages .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .messages .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 2px solid #ddd; }
+        .tab { padding: 8px 16px; cursor: pointer; font-size: 14px; border: none; background: none; color: #666; border-bottom: 2px solid transparent; margin-bottom: -2px; text-decoration: none; }
+        .tab.active, .tab:hover { color: #2c3e50; border-bottom-color: #3498db; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .badge-pending { background: #fff3cd; color: #856404; }
+        .badge-approved { background: #d4edda; color: #155724; }
+        .badge-rejected { background: #f8d7da; color: #721c24; }
+        .badge-active { background: #d1ecf1; color: #0c5460; }
+        .empty { text-align: center; color: #999; padding: 20px; font-size: 14px; }
+        .form-row { display: flex; gap: 12px; align-items: flex-end; margin-bottom: 8px; }
+        .form-row > div { flex: 1; }
+        .mt-8 { margin-top: 8px; }
+        .mt-16 { margin-top: 16px; }
+        .mb-8 { margin-bottom: 8px; }
+        .text-sm { font-size: 13px; }
+        .text-muted { color: #999; }
+    </style>
+</head>
+<body>
+    {% if user.is_authenticated %}
+    <nav class="navbar">
+        <h1 style="display: flex; align-items: center; gap: 16px;">
+            <a href="{% url 'login' %}">QPRS</a> — {{ user.get_role_display }}
+        </h1>
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <form action="{% url 'global_search' %}" method="get" style="margin: 0; display: flex; gap: 4px;">
+                <input type="text" name="q" placeholder="Search courses..." style="margin: 0; padding: 4px 8px; width: 200px;">
+                <button type="submit" class="btn btn-primary btn-sm">Search</button>
+            </form>
+            <span class="text-sm">{{ user.username }}</span>
+            <a href="{% url 'logout' %}">Logout</a>
+        </div>
+    </nav>
+    {% endif %}
+
+    <div class="container">
+        <div style="margin-bottom: 16px;">
+            <button onclick="window.history.back();" class="btn btn-secondary btn-sm">❮ Back</button>
+        </div>
+        {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+            <li class="{{ message.tags }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

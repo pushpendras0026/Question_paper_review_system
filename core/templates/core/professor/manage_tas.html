@@ -1,0 +1,51 @@
+{% extends "core/base.html" %}
+{% block title %}Manage TAs — {{ course.code }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Manage TAs — {{ course.code }}</h2>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-row">
+            <div>
+                <label>TA</label>
+                {{ form.ta }}
+            </div>
+        </div>
+        <div class="form-row mt-8">
+            <div><label><input type="checkbox" name="can_upload_scripts"> Upload Scripts</label></div>
+            <div><label><input type="checkbox" name="can_resolve_queries"> Resolve Queries</label></div>
+            <div><label><input type="checkbox" name="can_update_marks"> Update Marks</label></div>
+            <div><label><input type="checkbox" name="can_assign_grades"> Assign Grades</label></div>
+        </div>
+        <button type="submit" class="btn btn-primary mt-8">Add TA</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Current TAs</h2>
+    {% if ta_assignments %}
+    <table>
+        <tr><th>TA</th><th>Upload Scripts</th><th>Resolve Queries</th><th>Update Marks</th><th>Assign Grades</th><th>Actions</th></tr>
+        {% for ta in ta_assignments %}
+        <tr>
+            <td>{{ ta.ta.username }}</td>
+            <td>{% if ta.can_upload_scripts %}✓{% else %}✗{% endif %}</td>
+            <td>{% if ta.can_resolve_queries %}✓{% else %}✗{% endif %}</td>
+            <td>{% if ta.can_update_marks %}✓{% else %}✗{% endif %}</td>
+            <td>{% if ta.can_assign_grades %}✓{% else %}✗{% endif %}</td>
+            <td>
+                <form action="{% url 'professor_remove_ta' course.id ta.id %}" method="post" style="display:inline; margin:0;" onsubmit="return confirm('Are you sure you want to remove this TA?');">
+                    {% csrf_token %}
+                    <input type="text" name="reason" placeholder="Reason for removal..." required style="width:140px; display:inline-block; margin-bottom:0;" class="text-sm">
+                    <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No TAs assigned</p>
+    {% endif %}
+</div>
+<a href="{% url 'professor_course_detail' course.id %}" class="btn btn-secondary">← Back</a>
+{% endblock %}

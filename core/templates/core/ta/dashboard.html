@@ -1,0 +1,56 @@
+{% extends "core/base.html" %}
+{% block title %}TA Dashboard{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Inbox & Notifications</h2>
+    {% if user.notifications.all %}
+    <ul class="messages">
+        {% for notif in user.notifications.all %}
+        <li class="warning" style="margin-bottom: 4px;">
+            <strong>[{{ notif.created_at|date:"M d, H:i" }}]</strong> {{ notif.message }}
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty text-sm">No new notifications.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Active Course Assignments</h2>
+    {% if assignments %}
+    <table>
+        <tr><th>Course</th><th>Semester</th><th>Upload Scripts</th><th>Resolve Queries</th><th>Update Marks</th><th>Assign Grades</th><th>Actions</th></tr>
+        {% for a in assignments %}
+        <tr>
+            <td>{{ a.course.code }} — {{ a.course.name }}</td>
+            <td>{{ a.course.semester }}</td>
+            <td>{% if a.can_upload_scripts %}✓{% else %}✗{% endif %}</td>
+            <td>{% if a.can_resolve_queries %}✓{% else %}✗{% endif %}</td>
+            <td>{% if a.can_update_marks %}✓{% else %}✗{% endif %}</td>
+            <td>{% if a.can_assign_grades %}✓{% else %}✗{% endif %}</td>
+            <td><a href="{% url 'ta_course_detail' a.id %}" class="btn btn-primary btn-sm">View</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No active course assignments</p>
+    {% endif %}
+</div>
+
+{% if ended_assignments %}
+<div class="card">
+    <h2>Ended Courses (Grade Assignment Pending)</h2>
+    <table>
+        <tr><th>Course</th><th>Semester</th><th>Actions</th></tr>
+        {% for a in ended_assignments %}
+        <tr>
+            <td>{{ a.course.code }} — {{ a.course.name }}</td>
+            <td>{{ a.course.semester }}</td>
+            <td><a href="{% url 'ta_assign_grades' a.id %}" class="btn btn-success btn-sm">Assign Grades</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
+{% endblock %}

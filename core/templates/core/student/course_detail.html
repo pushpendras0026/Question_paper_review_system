@@ -1,0 +1,32 @@
+{% extends "core/base.html" %}
+{% block title %}{{ course.code }} — Course Detail{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>{{ course.code }} — {{ course.name }}</h2>
+    <p class="text-sm text-muted">{{ course.semester }} | Professor: {{ course.professor.username }}</p>
+</div>
+
+<div class="tabs">
+    <a href="{% url 'student_course_detail' course.id %}" class="tab active">Answer Scripts</a>
+    <a href="{% url 'student_course_stats' course.id %}" class="tab">Stats</a>
+</div>
+
+<div class="card">
+    <h2>Exams</h2>
+    {% if exams %}
+    <table>
+        <tr><th>Exam</th><th>Actions</th></tr>
+        {% for exam in exams %}
+        <tr>
+            <td>{{ exam.name }}</td>
+            <td><a href="{% url 'student_view_scripts' course.id exam.id %}" class="btn btn-primary btn-sm">View Scripts & Marks</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No exams added yet</p>
+    {% endif %}
+</div>
+
+<a href="{% url 'student_dashboard' %}" class="btn btn-secondary">← Back to Dashboard</a>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "core/base.html" %}
+{% block title %}{{ course.code }} — Manage{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>{{ course.code }} — {{ course.name }}</h2>
+    <p class="text-sm text-muted">{{ course.semester }} | {{ enrolled_students|length }} students enrolled</p>
+</div>
+
+<div class="card">
+    <h2>Exams</h2>
+    <a href="{% url 'professor_add_exam' course.id %}" class="btn btn-success btn-sm mb-8">+ Add Exam</a>
+    {% if exams %}
+    <table>
+        <tr><th>Exam</th><th>Sections</th><th>Actions</th></tr>
+        {% for exam in exams %}
+        <tr>
+            <td>{{ exam.name }}</td>
+            <td>{{ exam.sections.count }} sections</td>
+            <td>
+                <a href="{% url 'professor_add_section' exam.id %}" class="btn btn-secondary btn-sm">+ Section</a>
+                <a href="{% url 'professor_upload_scripts' exam.id %}" class="btn btn-primary btn-sm">Upload Scripts</a>
+                <a href="{% url 'professor_enter_marks' exam.id %}" class="btn btn-primary btn-sm">Enter Marks</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No exams added</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Teaching Assistants</h2>
+    <a href="{% url 'professor_manage_tas' course.id %}" class="btn btn-success btn-sm mb-8">Manage TAs</a>
+    {% if tas %}
+    <table>
+        <tr><th>TA</th><th>Upload</th><th>Queries</th><th>Marks</th><th>Grades</th></tr>
+        {% for ta in tas %}
+        <tr>
+            <td>{{ ta.ta.username }}</td>
+            <td>{% if ta.can_upload_scripts %}✓{% else %}✗{% endif %}</td>
+            <td>{% if ta.can_resolve_queries %}✓{% else %}✗{% endif %}</td>
+            <td>{% if ta.can_update_marks %}✓{% else %}✗{% endif %}</td>
+            <td>{% if ta.can_assign_grades %}✓{% else %}✗{% endif %}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p class="empty">No TAs assigned</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Other Actions</h2>
+    <a href="{% url 'professor_view_queries' course.id %}" class="btn btn-primary btn-sm">View Queries</a>
+    {% if not course.is_active %}
+    <a href="{% url 'professor_assign_grades' course.id %}" class="btn btn-success btn-sm">Assign Grades</a>
+    {% endif %}
+</div>
+
+<a href="{% url 'professor_dashboard' %}" class="btn btn-secondary">← Back to Dashboard</a>
+{% endblock %}

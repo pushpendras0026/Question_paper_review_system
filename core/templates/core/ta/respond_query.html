@@ -1,0 +1,18 @@
+{% extends "core/base.html" %}
+{% block title %}TA — Respond to Query{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Respond to Query</h2>
+    <p class="text-sm"><strong>Exam:</strong> {{ query.answer_script.exam.name }}</p>
+    <p class="text-sm"><strong>Student:</strong> {{ query.raised_by.username }}</p>
+    <p class="text-sm"><strong>Query:</strong> {{ query.text }}</p>
+
+    <form method="post" class="mt-16">
+        {% csrf_token %}
+        <label for="id_response">Your Response</label>
+        {{ form.response }}
+        <button type="submit" class="btn btn-primary mt-8">Submit Response</button>
+    </form>
+</div>
+<a href="{% url 'ta_view_queries' assignment.id %}" class="btn btn-secondary">← Back</a>
+{% endblock %}
