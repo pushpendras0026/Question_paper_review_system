@@ -1,8 +1,8 @@
 {% extends "core/base.html" %}
-{% block title %}Manage Courses{% endblock %}
+{% block title %}Ended Courses{% endblock %}
 {% block content %}
 <div class="card">
-    <h2>All Courses</h2>
+    <h2>Ended Courses</h2>
     {% if courses %}
     <table>
         <tr><th>Code</th><th>Name</th><th>Semester</th><th>Professor</th><th>Actions</th></tr>
@@ -13,13 +13,13 @@
             <td>{{ c.semester }}</td>
             <td>{{ c.professor.username }}</td>
             <td>
-                <a href="{% url 'admin_end_course' c.id %}" class="btn btn-danger btn-sm" onclick="return confirm('End course {{ c.code }}?')">End Course</a>
+                <a href="{% url 'admin_view_course_grades' c.id %}" class="btn btn-primary btn-sm">Grade Card</a>
             </td>
         </tr>
         {% endfor %}
     </table>
     {% else %}
-    <p class="empty">No courses</p>
+    <p class="empty">No ended courses</p>
     {% endif %}
 </div>
 <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary">← Back</a>

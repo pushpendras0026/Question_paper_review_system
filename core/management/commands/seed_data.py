@@ -75,9 +75,9 @@ class Command(BaseCommand):
         Enrollment.objects.create(student=stud5, course=cs201, status='approved')
 
         # Completed enrollment with grade
-        Enrollment.objects.create(student=stud1, course=cs100, status='approved', grade='A')
-        Enrollment.objects.create(student=stud2, course=cs100, status='approved', grade='B+')
-        Enrollment.objects.create(student=stud4, course=cs100, status='approved', grade='A-')
+        Enrollment.objects.create(student=stud1, course=cs100, status='approved')
+        Enrollment.objects.create(student=stud2, course=cs100, status='approved')
+        Enrollment.objects.create(student=stud4, course=cs100, status='approved')
 
         # Pending enrollment
         Enrollment.objects.create(student=stud3, course=cs101, status='pending_professor')
@@ -98,12 +98,12 @@ class Command(BaseCommand):
         TAAssignment.objects.create(
             ta=ta1, course=cs101,
             can_upload_scripts=True, can_resolve_queries=True,
-            can_update_marks=True, can_assign_grades=False
+            can_update_marks=True
         )
         TAAssignment.objects.create(
             ta=ta2, course=cs201,
             can_upload_scripts=True, can_resolve_queries=True,
-            can_update_marks=True, can_assign_grades=True
+            can_update_marks=True
         )
 
         self.stdout.write(self.style.SUCCESS(

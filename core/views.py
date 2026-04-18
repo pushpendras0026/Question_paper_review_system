@@ -15,9 +15,9 @@ from .models import (
 )
 from .forms import (
     LoginForm, CourseForm, ExamForm, ExamSectionForm, AnswerScriptUploadForm,
-    MarkForm, QueryForm, QueryResponseForm, GradeForm, TAAssignmentForm,
+    MarkForm, QueryForm, QueryResponseForm, TAAssignmentForm,
     FacultyAdvisorForm, AdminAddFacultyForm, AdminAddStudentForm,
-    AdminCourseGradeDeadlineForm, AdminForceEnrollForm
+    AdminForceEnrollForm
 )
 
 
@@ -27,7 +27,7 @@ def role_required(role):
         def wrapper(request, *args, **kwargs):
             if not request.user.is_authenticated:
                 return redirect('login')
-            if request.user.role != role:
+            if request.user.role != role and not (request.user.is_superuser and role == 'admin'):
                 messages.error(request, 'Access denied.')
                 return redirect('login')
             return view_func(request, *args, **kwargs)
@@ -39,7 +39,9 @@ def role_required(role):
 
 def login_view(request):
     if request.user.is_authenticated:
-        return redirect(f'{request.user.role}_dashboard')
+        role = request.user.role if getattr(request.user, 'role', None) else ('admin' if request.user.is_superuser else None)
+        if role:
+            return redirect(f'{role}_dashboard')
 
     if request.method == 'POST':
         form = LoginForm(request.POST)
@@ -48,7 +50,7 @@ def login_view(request):
             password = form.cleaned_data['password']
             role = form.cleaned_data['role']
             user = authenticate(request, username=username, password=password)
-            if user is not None and user.role == role:
+            if user is not None and (user.role == role or (user.is_superuser and role == 'admin')):
                 login(request, user)
                 return redirect(f'{role}_dashboard')
             else:
@@ -61,18 +63,6 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return redirect('login')
-
-
-@login_required
-def global_search(request):
-    query = request.GET.get('q', '')
-    courses = list(Course.objects.filter(code__icontains=query)) + list(Course.objects.filter(name__icontains=query)) if query else []
-    
-    return render(request, 'core/global_search.html', {
-        'query': query,
-        'courses': set(courses)
-    })
-
 
 
 
@@ -89,14 +79,9 @@ def student_dashboard(request):
         student=request.user, status='approved', course__is_active=False
     ).select_related('course')
     
-    rejected_enrollments = Enrollment.objects.filter(
-        student=request.user, status='rejected'
-    ).select_related('course')
-
     return render(request, 'core/student/dashboard.html', {
         'current_enrollments': current_enrollments,
         'completed_enrollments': completed_enrollments,
-        'rejected_enrollments': rejected_enrollments,
     })
 
 
@@ -105,8 +90,8 @@ def student_dashboard(request):
 def student_add_course(request):
     current_semester = _get_current_semester()
     
-    # Filter courses strictly by student department if set
-    courses_query = Course.objects.filter(is_active=True, semester=current_semester)
+    # Filter courses by student department if set and keep open catalog
+    courses_query = Course.objects.filter(is_active=True)
     if request.user.department:
         courses_query = courses_query.filter(department=request.user.department)
 
@@ -118,7 +103,7 @@ def student_add_course(request):
 
     if request.method == 'POST':
         course_id = request.POST.get('course_id')
-        course = get_object_or_404(Course, id=course_id, is_active=True, semester=current_semester)
+        course = get_object_or_404(Course, id=course_id, is_active=True)
         # Check if already enrolled or pending
         if not Enrollment.objects.filter(student=request.user, course=course).exists():
             Enrollment.objects.create(
@@ -165,7 +150,7 @@ def student_view_scripts(request, course_id, exam_id):
     ) if script else []
 
     now = timezone.now()
-    can_raise_query = False
+    can_raise_query = True
     if exam.query_window_start and exam.query_window_end:
         can_raise_query = exam.query_window_start <= now <= exam.query_window_end
 
@@ -186,9 +171,10 @@ def student_raise_query(request, script_id):
     
     exam = script.exam
     now = timezone.now()
-    if not (exam.query_window_start and exam.query_window_end and exam.query_window_start <= now <= exam.query_window_end):
-        messages.error(request, 'The query window for this exam is currently closed.')
-        return redirect('student_view_scripts', course_id=exam.course_id, exam_id=exam.id)
+    if exam.query_window_start and exam.query_window_end:
+        if not (exam.query_window_start <= now <= exam.query_window_end):
+            messages.error(request, 'The query window for this exam is currently closed.')
+            return redirect('student_view_scripts', course_id=exam.course_id, exam_id=exam.id)
 
     if request.method == 'POST':
         form = QueryForm(request.POST)
@@ -675,29 +661,6 @@ def professor_remove_ta(request, course_id, assignment_id):
     return redirect('professor_manage_tas', course_id=course.id)
 @login_required
 @role_required('professor')
-def professor_assign_grades(request, course_id):
-    course = get_object_or_404(Course, id=course_id, professor=request.user)
-    enrolled_students = Enrollment.objects.filter(
-        course=course, status='approved'
-    ).select_related('student')
-
-    if request.method == 'POST':
-        for enrollment in enrolled_students:
-            grade = request.POST.get(f'grade_{enrollment.id}')
-            if grade:
-                enrollment.grade = grade
-                enrollment.save()
-        messages.success(request, 'Grades assigned.')
-        return redirect('professor_course_detail', course_id=course.id)
-
-    return render(request, 'core/professor/assign_grades.html', {
-        'course': course,
-        'enrolled_students': enrolled_students,
-    })
-
-
-@login_required
-@role_required('professor')
 def professor_completed_course(request, course_id):
     course = get_object_or_404(
         Course, id=course_id, professor=request.user, is_active=False
@@ -755,26 +718,7 @@ def professor_respond_query(request, query_id):
 @login_required
 @role_required('admin')
 def admin_dashboard(request):
-    from collections import defaultdict
-
-    active_qs = Course.objects.filter(is_active=True).select_related('professor').order_by('department', 'semester', 'code')
-    inactive_qs = Course.objects.filter(is_active=False).select_related('professor').order_by('department', 'semester', 'code')
-    advisor_assignments = FacultyAdvisor.objects.all().select_related('student', 'advisor')
-
-    # Group by department → semester
-    active_by_dept = defaultdict(lambda: defaultdict(list))
-    for c in active_qs:
-        active_by_dept[c.department or 'Unknown'][c.semester].append(c)
-
-    inactive_by_dept = defaultdict(lambda: defaultdict(list))
-    for c in inactive_qs:
-        inactive_by_dept[c.department or 'Unknown'][c.semester].append(c)
-
-    return render(request, 'core/admin/dashboard.html', {
-        'active_by_dept': dict(active_by_dept),
-        'inactive_by_dept': dict(inactive_by_dept),
-        'advisor_assignments': advisor_assignments,
-    })
+    return render(request, 'core/admin/dashboard.html')
 
 
 @login_required
@@ -803,57 +747,20 @@ def admin_end_course(request, course_id):
     return redirect('admin_dashboard')
 
 
-@login_required
-@role_required('admin')
-def admin_assign_advisor(request):
-    if request.method == 'POST':
-        form = FacultyAdvisorForm(request.POST)
-        if form.is_valid():
-            advisor = form.cleaned_data['advisor']
-            assignment_type = form.cleaned_data['assignment_type']
-            count = 0
-            
-            if assignment_type == 'single':
-                roll_no = form.cleaned_data.get('single_roll_number')
-                student = User.objects.filter(role='student', roll_number=roll_no).first()
-                if student:
-                    FacultyAdvisor.objects.update_or_create(student=student, defaults={'advisor': advisor})
-                    count = 1
-            else:
-                start_roll = form.cleaned_data.get('start_roll_number')
-                end_roll = form.cleaned_data.get('end_roll_number')
-                students = User.objects.filter(role='student', roll_number__gte=start_roll, roll_number__lte=end_roll)
-                for student in students:
-                    FacultyAdvisor.objects.update_or_create(student=student, defaults={'advisor': advisor})
-                    count += 1
-                
-            messages.success(request, f'Advisor {advisor.username} assigned to {count} students.')
-            return redirect('admin_dashboard')
-    else:
-        form = FacultyAdvisorForm()
-    return render(request, 'core/admin/assign_advisor.html', {'form': form})
+
 
 
 @login_required
 @role_required('admin')
 def admin_manage_courses(request):
-    courses = Course.objects.all().select_related('professor')
-    professors = User.objects.filter(role='professor')
+    courses = Course.objects.filter(is_active=True).select_related('professor')
+    return render(request, 'core/admin/manage_courses.html', {'courses': courses})
 
-    if request.method == 'POST':
-        course_id = request.POST.get('course_id')
-        professor_id = request.POST.get('professor_id')
-        course = get_object_or_404(Course, id=course_id)
-        professor = get_object_or_404(User, id=professor_id, role='professor')
-        course.professor = professor
-        course.save()
-        messages.success(request, f'Professor updated for {course.code}.')
-        return redirect('admin_manage_courses')
-
-    return render(request, 'core/admin/manage_courses.html', {
-        'courses': courses,
-        'professors': professors,
-    })
+@login_required
+@role_required('admin')
+def admin_ended_courses(request):
+    courses = Course.objects.filter(is_active=False).select_related('professor')
+    return render(request, 'core/admin/ended_courses.html', {'courses': courses})
 
 
 # ==================== TA VIEWS ====================
@@ -864,14 +771,8 @@ def ta_dashboard(request):
     assignments = TAAssignment.objects.filter(
         ta=request.user, course__is_active=True
     ).select_related('course')
-    # Also show ended courses where TA can still assign grades
-    ended_assignments = TAAssignment.objects.filter(
-        ta=request.user, course__is_active=False, can_assign_grades=True
-    ).select_related('course')
-
     return render(request, 'core/ta/dashboard.html', {
         'assignments': assignments,
-        'ended_assignments': ended_assignments,
     })
 @login_required
 @role_required('admin')
@@ -911,7 +812,7 @@ def admin_force_enroll(request):
             course = form.cleaned_data['course']
             student = User.objects.filter(role='student', roll_number=roll_no).first()
             if student:
-                Enrollment.objects.get_or_create(student=student, course=course, defaults={'status': 'approved'})
+                Enrollment.objects.update_or_create(student=student, course=course, defaults={'status': 'approved'})
                 messages.success(request, f'Student {student.username} manually enrolled into {course.code}.')
             else:
                 messages.error(request, 'Student not found.')
@@ -926,20 +827,10 @@ def admin_force_enroll(request):
 def admin_view_course_grades(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     enrollments = Enrollment.objects.filter(course=course, status='approved').select_related('student')
-    
-    if request.method == 'POST':
-        form = AdminCourseGradeDeadlineForm(request.POST, instance=course)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Grade card deadline updated.')
-            return redirect('admin_view_course_grades', course_id=course.id)
-    else:
-        form = AdminCourseGradeDeadlineForm(instance=course)
         
     return render(request, 'core/admin/view_grades.html', {
         'course': course,
-        'enrollments': enrollments,
-        'form': form
+        'enrollments': enrollments
     })
 
 @login_required
@@ -1092,33 +983,6 @@ def ta_update_marks(request, assignment_id, exam_id):
         'enrolled_students': enrolled_students,
         'sections': sections,
         'existing_marks': existing_marks,
-    })
-
-
-@login_required
-@role_required('ta')
-def ta_assign_grades(request, assignment_id):
-    assignment = get_object_or_404(
-        TAAssignment, id=assignment_id, ta=request.user, can_assign_grades=True
-    )
-    course = assignment.course
-    enrolled_students = Enrollment.objects.filter(
-        course=course, status='approved'
-    ).select_related('student')
-
-    if request.method == 'POST':
-        for enrollment in enrolled_students:
-            grade = request.POST.get(f'grade_{enrollment.id}')
-            if grade:
-                enrollment.grade = grade
-                enrollment.save()
-        messages.success(request, 'Grades assigned.')
-        return redirect('ta_course_detail', assignment_id=assignment.id)
-
-    return render(request, 'core/ta/assign_grades.html', {
-        'assignment': assignment,
-        'course': course,
-        'enrolled_students': enrolled_students,
     })
 
 

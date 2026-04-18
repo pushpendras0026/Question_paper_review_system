@@ -26,7 +26,7 @@ class CourseAdmin(admin.ModelAdmin):
 
 @admin.register(Enrollment)
 class EnrollmentAdmin(admin.ModelAdmin):
-    list_display = ('student', 'course', 'status', 'grade')
+    list_display = ('student', 'course', 'status')
     list_filter = ('status',)
 
 
@@ -62,4 +62,4 @@ class QueryAdmin(admin.ModelAdmin):
 
 @admin.register(TAAssignment)
 class TAAssignmentAdmin(admin.ModelAdmin):
-    list_display = ('ta', 'course', 'can_upload_scripts', 'can_resolve_queries', 'can_update_marks', 'can_assign_grades')
+    list_display = ('ta', 'course', 'can_upload_scripts', 'can_resolve_queries', 'can_update_marks')

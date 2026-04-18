@@ -14,10 +14,7 @@ class LoginForm(forms.Form):
 class CourseForm(forms.ModelForm):
     class Meta:
         model = Course
-        fields = ['code', 'name', 'semester', 'department', 'professor', 'grade_card_deadline']
-        widgets = {
-            'grade_card_deadline': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-        }
+        fields = ['code', 'name', 'semester', 'department', 'professor']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -63,14 +60,10 @@ class QueryResponseForm(forms.Form):
     response = forms.CharField(widget=forms.Textarea(attrs={'rows': 3}))
 
 
-class GradeForm(forms.Form):
-    grade = forms.CharField(max_length=5)
-
-
 class TAAssignmentForm(forms.ModelForm):
     class Meta:
         model = TAAssignment
-        fields = ['ta', 'can_upload_scripts', 'can_resolve_queries', 'can_update_marks', 'can_assign_grades']
+        fields = ['ta', 'can_upload_scripts', 'can_resolve_queries', 'can_update_marks']
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -107,6 +100,12 @@ class AdminAddFacultyForm(forms.ModelForm):
 
 
 class AdminAddStudentForm(forms.ModelForm):
+    faculty_advisor = forms.ModelChoiceField(
+        queryset=User.objects.filter(role='professor'),
+        required=True,
+        label="Faculty Advisor"
+    )
+
     class Meta:
         model = User
         fields = ['username', 'first_name', 'last_name', 'email', 'department', 'roll_number']
@@ -114,23 +113,18 @@ class AdminAddStudentForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.role = 'student'
-        # Default password is the roll_number
         if user.roll_number:
             user.set_password(user.roll_number)
         else:
-            user.set_password('password123!')
+            user.set_password('password')
         if commit:
             user.save()
+            advisor = self.cleaned_data.get('faculty_advisor')
+            if advisor:
+                from .models import FacultyAdvisor
+                FacultyAdvisor.objects.create(student=user, advisor=advisor)
         return user
 
-
-class AdminCourseGradeDeadlineForm(forms.ModelForm):
-    class Meta:
-        model = Course
-        fields = ['grade_card_deadline']
-        widgets = {
-            'grade_card_deadline': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-        }
 
 
 class AdminForceEnrollForm(forms.Form):

@@ -15,16 +15,17 @@ class User(AbstractUser):
     department = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
-        return f"{self.roll_number + ' - ' if self.roll_number else ''}{self.username} ({self.get_role_display()})"
+        role_display = self.get_role_display() if getattr(self, 'role', None) else (
+            "Admin" if self.is_superuser else "Unknown Role"
+        )
+        return f"{self.roll_number + ' - ' if self.roll_number else ''}{self.username} ({role_display})"
 
 
 class Course(models.Model):
-    SEMESTER_CHOICES = [(str(i), str(i)) for i in range(1, 9)]
     code = models.CharField(max_length=20)
     name = models.CharField(max_length=200)
     department = models.CharField(max_length=100, null=True, blank=True)
-    semester = models.CharField(max_length=50, choices=SEMESTER_CHOICES)
-    grade_card_deadline = models.DateTimeField(null=True, blank=True)
+    semester = models.CharField(max_length=50)
     is_active = models.BooleanField(default=True)
     professor = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='courses_teaching',
@@ -66,7 +67,6 @@ class Enrollment(models.Model):
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='enrollments')
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrollments')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending_professor')
-    grade = models.CharField(max_length=5, null=True, blank=True)
     rejection_reason = models.TextField(null=True, blank=True)
 
     class Meta:
@@ -156,7 +156,6 @@ class TAAssignment(models.Model):
     can_upload_scripts = models.BooleanField(default=False)
     can_resolve_queries = models.BooleanField(default=False)
     can_update_marks = models.BooleanField(default=False)
-    can_assign_grades = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('ta', 'course')

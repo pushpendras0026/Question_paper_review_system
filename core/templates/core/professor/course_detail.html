@@ -34,14 +34,13 @@
     <a href="{% url 'professor_manage_tas' course.id %}" class="btn btn-success btn-sm mb-8">Manage TAs</a>
     {% if tas %}
     <table>
-        <tr><th>TA</th><th>Upload</th><th>Queries</th><th>Marks</th><th>Grades</th></tr>
+        <tr><th>TA</th><th>Upload</th><th>Queries</th><th>Marks</th></tr>
         {% for ta in tas %}
         <tr>
             <td>{{ ta.ta.username }}</td>
-            <td>{% if ta.can_upload_scripts %}✓{% else %}✗{% endif %}</td>
-            <td>{% if ta.can_resolve_queries %}✓{% else %}✗{% endif %}</td>
-            <td>{% if ta.can_update_marks %}✓{% else %}✗{% endif %}</td>
-            <td>{% if ta.can_assign_grades %}✓{% else %}✗{% endif %}</td>
+            <td>{% if ta.can_upload_scripts %}<span class="badge badge-approved">Yes</span>{% else %}<span class="badge badge-rejected">No</span>{% endif %}</td>
+            <td>{% if ta.can_resolve_queries %}<span class="badge badge-approved">Yes</span>{% else %}<span class="badge badge-rejected">No</span>{% endif %}</td>
+            <td>{% if ta.can_update_marks %}<span class="badge badge-approved">Yes</span>{% else %}<span class="badge badge-rejected">No</span>{% endif %}</td>
         </tr>
         {% endfor %}
     </table>
@@ -52,10 +51,7 @@
 
 <div class="card">
     <h2>Other Actions</h2>
-    <a href="{% url 'professor_view_queries' course.id %}" class="btn btn-primary btn-sm">View Queries</a>
-    {% if not course.is_active %}
-    <a href="{% url 'professor_assign_grades' course.id %}" class="btn btn-success btn-sm">Assign Grades</a>
-    {% endif %}
+        <a href="{% url 'professor_view_queries' course.id %}" class="btn btn-primary btn-sm">View Queries</a>
 </div>
 
 <a href="{% url 'professor_dashboard' %}" class="btn btn-secondary">← Back to Dashboard</a>
