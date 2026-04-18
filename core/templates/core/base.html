@@ -68,6 +68,7 @@
         <div style="display: flex; align-items: center; gap: 16px;">
 
             <span class="text-sm">{{ user.username }}</span>
+            <a href="{% url 'change_password' %}" class="text-sm">Change Password</a>
             <a href="{% url 'logout' %}">Logout</a>
         </div>
     </nav>

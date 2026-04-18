@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Avg, Count
@@ -63,6 +64,24 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return redirect('login')
+
+
+@login_required
+def change_password(request):
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)  # Keeps user logged in
+            messages.success(request, 'Your password was successfully updated!')
+            # Redirect to their appropriate dashboard
+            role = request.user.role if getattr(request.user, 'role', None) else ('admin' if request.user.is_superuser else None)
+            return redirect(f'{role}_dashboard' if role else 'login')
+        else:
+            messages.error(request, 'Please correct the error below.')
+    else:
+        form = PasswordChangeForm(request.user)
+    return render(request, 'core/change_password.html', {'form': form})
 
 
 
