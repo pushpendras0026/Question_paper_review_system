@@ -172,3 +172,4 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"To {self.user.username} - {self.created_at}"
+        
