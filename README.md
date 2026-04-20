@@ -8,47 +8,53 @@ A Django-based web application where faculty upload checked answer scripts and s
 
 Make sure the following are installed and running before you start:
 
-| Requirement | Version | Notes |
-|---|---|---|
-| Python | 3.10+ | Tested on 3.13.1 |
-| XAMPP | 3.3.0+ | Apache + MySQL must be running |
-| MySQL (XAMPP) | 10.4+ | Runs on port `3306` |
+| Requirement | Notes |
+|---|---|
+| Python | 3.10+ |
+| MySQL / MariaDB | Must be running locally on port 3306 |
 
 ---
 
 ## Setup (First Time Only)
 
-### 1. Start XAMPP
+### 1. Start MySQL Service
 
-Open **XAMPP Control Panel** and click **Start** for both:
-- **Apache**
-- **MySQL**
+Make sure your local MySQL/MariaDB server is running. Depending on your system (Mac/Linux/Windows), you might use Homebrew, Docker, XAMPP, or a native service:
 
----
+```bash
+# Example for Homebrew on Mac:
+brew services start mysql
+```
 
 ### 2. Create the Database
 
-Open a terminal (PowerShell or CMD) and run:
+Open a terminal and run the following command to create the required database `question_paper_review`:
 
-```powershell
-C:\xampp\mysql\bin\mysql.exe -u root -e "CREATE DATABASE IF NOT EXISTS question_paper_review;"
+```bash
+mysql -u root -e "CREATE DATABASE IF NOT EXISTS question_paper_review;"
 ```
 
 ---
 
-### 3. Clone / Navigate to the Project
+### 3. Navigate to the Project
 
-```powershell
-cd C:\Users\Lenovo\Downloads\Question-Paper-Review-System\Question-Paper-Review-System
+```bash
+cd /path/to/Question_paper_review_system
 ```
 
 ---
 
-### 4. Create & Activate Virtual Environment
+### 4. Create & Activate a Virtual Environment
 
-```powershell
+```bash
+# Create the environment
 python -m venv venv
-.\venv\Scripts\activate
+
+# Activate it (Mac/Linux)
+source venv/bin/activate
+
+# Activate it (Windows)
+# .\venv\Scripts\activate
 ```
 
 You should see `(venv)` in your prompt.
@@ -57,68 +63,60 @@ You should see `(venv)` in your prompt.
 
 ### 5. Install Dependencies
 
-```powershell
+Install the required minimal Python packages:
+
+```bash
 pip install -r requirements.txt
 ```
-
-> **Note:** This installs Django 4.2.16 (compatible with XAMPP's MariaDB 10.4) and `pymysql` for database connectivity. No C++ build tools required.
 
 ---
 
 ### 6. Apply Database Migrations
 
-```powershell
+Apply the Django migrations to create the required tables in your database:
+
+```bash
 python manage.py makemigrations
 python manage.py migrate
 ```
 
 ---
 
-### 7. Create Test Users (Optional — already seeded)
+### 7. Create Test Users
 
-To create the four test accounts manually, run:
+To create test accounts easily, you can use our built-in dummy data script (if available). Check if `populate_dummy_data` or `seed_data` exists:
 
-```powershell
-python manage.py shell -c "
-from core.models import User
-
-def create(username, email, role, password='Admin@1234'):
-    if not User.objects.filter(username=username).exists():
-        u = User.objects.create_user(username=username, email=email, password=password)
-        u.role = role
-        u.save()
-        print(f'Created {role}: {username}')
-
-create('admin1',   'admin@test.com',   'admin')
-create('prof1',    'prof@test.com',    'professor')
-create('student1', 'student@test.com', 'student')
-create('ta1',      'ta@test.com',      'ta')
-"
+```bash
+python manage.py seed_data
+# OR
+python manage.py populate_dummy_data
 ```
+
+*(You can also use `python manage.py createsuperuser` to manually create your own superadmin)*
 
 ---
 
 ## Running the Server
 
-Every time you want to run the project:
+Every time you want to run the project, follow these steps:
 
-### Step 1 — Start XAMPP (Apache + MySQL)
-Open XAMPP Control Panel → Start **Apache** and **MySQL**.
+### Step 1 — Verify MySQL is running
+Ensure your local MySQL service is active.
 
 ### Step 2 — Activate the virtual environment
 
-```powershell
-cd C:\Users\Lenovo\Downloads\Question-Paper-Review-System\Question-Paper-Review-System
-.\venv\Scripts\activate
+```bash
+cd /path/to/Question_paper_review_system
+source venv/bin/activate
 ```
 
-### Step 3 — Start the Django server
+### Step 3 — Start the Django development server
 
-```powershell
+```bash
 python manage.py runserver
 ```
 
-### Step 4 — Open in browser
+### Step 4 — Open your browser
 
 ```
 http://127.0.0.1:8000/
@@ -128,7 +126,7 @@ http://127.0.0.1:8000/
 
 ## Test Credentials
 
-All test accounts use the password: **`Admin@1234`**
+By default, test accounts seeded via our management scripts use the password: **`Admin@1234`**
 
 | Username | Role | Login Redirect |
 |---|---|---|
@@ -139,33 +137,9 @@ All test accounts use the password: **`Admin@1234`**
 
 ---
 
-## Project Structure
-
-```
-Question-Paper-Review-System/
-├── QuestionReviewSystem/       # Django project settings & URLs
-│   ├── settings.py             # Database, apps, middleware config
-│   ├── urls.py                 # Root URL config
-│   ├── __init__.py             # pymysql patch (MySQL driver)
-│   └── wsgi.py
-├── core/                       # Main application
-│   ├── models.py               # User, Course, Exam, Marks, Queries, TA models
-│   ├── views.py                # All role-based views
-│   ├── urls.py                 # App-level URL routes
-│   ├── forms.py                # Django forms
-│   ├── templates/              # HTML templates
-│   └── migrations/             # Auto-generated DB migrations
-├── static/                     # CSS / JS / images
-├── media/                      # Uploaded answer scripts (at runtime)
-├── manage.py
-└── requirements.txt
-```
-
----
-
 ## Database Configuration
 
-The project connects to XAMPP's MySQL with these defaults (see `settings.py`):
+The project connects to MySQL/MariaDB using these default settings found in `QuestionReviewSystem/settings.py`:
 
 ```python
 DATABASES = {
@@ -173,14 +147,14 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'question_paper_review',
         'USER': 'root',
-        'PASSWORD': '',        # default XAMPP root has no password
+        'PASSWORD': '',        # Update this if your root user has a password!
         'HOST': '127.0.0.1',
         'PORT': '3306',
     }
 }
 ```
 
-If you have set a MySQL root password in XAMPP, update `PASSWORD` accordingly.
+If you have set a MySQL root password, you **must** update the `PASSWORD` field in `settings.py` before migrating or running the server.
 
 ---
 
@@ -188,8 +162,7 @@ If you have set a MySQL root password in XAMPP, update `PASSWORD` accordingly.
 
 | Error | Fix |
 |---|---|
-| `Can't connect to MySQL server` | Make sure MySQL is running in XAMPP |
-| `Unknown database 'question_paper_review'` | Run the `CREATE DATABASE` command in Step 2 |
-| `No module named 'pymysql'` | Run `pip install pymysql` inside the activated venv |
-| `venv\Scripts\activate` not recognized | Make sure you're in PowerShell and use `.\venv\Scripts\activate` |
-| Port 8000 in use | Run `python manage.py runserver 8080` and open `http://127.0.0.1:8080/` |
+| `Can't connect to MySQL server` | Make sure your local MySQL service is actually running. |
+| `Unknown database 'question_paper_review'` | You forgot to run the `CREATE DATABASE` command in Setup Step 2. |
+| `django.db.utils.OperationalError: Access denied for user 'root'@'localhost' (using password: NO)` | Your MySQL root user has a password. Update `settings.py` to include it. |
+| `Port 8000 is already in use` | Run the server on a different port: `python manage.py runserver 8080` |
