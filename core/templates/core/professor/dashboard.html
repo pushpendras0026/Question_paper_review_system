@@ -2,6 +2,40 @@
 {% block title %}Professor Dashboard{% endblock %}
 {% block content %}
 <div class="card">
+    <h2>Inbox & Notifications</h2>
+    {% if notifications %}
+    <ul class="messages">
+        {% for notif in notifications %}
+        <li class="warning"><strong>[{{ notif.created_at|date:"M d, H:i" }}]</strong> {{ notif.message }}</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty">No new notifications.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Find Courses</h2>
+    <form method="get">
+        <input type="hidden" name="request_q" value="{{ request_search_query }}">
+        <div class="form-row">
+            <div>
+                <label for="course-search">Search by code, name, or semester</label>
+                <input id="course-search" type="text" name="q" value="{{ search_query }}" list="prof-course-suggestions" placeholder="Example: CS101 or Fall 2026">
+                <datalist id="prof-course-suggestions">
+                    {% for suggestion in course_search_suggestions %}
+                    <option value="{{ suggestion }}"></option>
+                    {% endfor %}
+                </datalist>
+            </div>
+            <div style="max-width: 180px;">
+                <button type="submit" class="btn btn-primary">Search</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="card">
     <h2>Active Courses</h2>
     {% if active_courses %}
     <table>
@@ -41,45 +75,118 @@
 
 <div class="card">
     <h2>Pending Approval Requests</h2>
-    {% if prof_requests or advisor_requests %}
+    <form method="get" class="mb-8">
+        <input type="hidden" name="q" value="{{ search_query }}">
+        <div class="form-row">
+            <div>
+                <label for="request-search">Search pending requests by student or course</label>
+                <input id="request-search" type="text" name="request_q" value="{{ request_search_query }}" placeholder="Student username/roll or course code/name">
+            </div>
+            <div style="max-width: 180px;">
+                <button type="submit" class="btn btn-primary">Search Requests</button>
+            </div>
+        </div>
+    </form>
 
     {% if prof_requests %}
     <h3>As Professor</h3>
-    <table>
-        <tr><th>Student</th><th>Course</th><th>Actions</th></tr>
-        {% for e in prof_requests %}
-        <tr>
-            <td>{{ e.student.username }}</td>
-            <td>{{ e.course.code }} — {{ e.course.name }}</td>
-            <td>
-                <a href="{% url 'professor_approve_enrollment' e.id %}?type=professor" class="btn btn-success btn-sm">Approve</a>
-                <a href="{% url 'professor_reject_enrollment' e.id %}" class="btn btn-danger btn-sm">Reject</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+    <form method="post" action="{% url 'professor_bulk_enrollment_action' %}" class="mb-8">
+        {% csrf_token %}
+        <input type="hidden" name="type" value="professor">
+        <input type="hidden" name="next" value="dashboard">
+        <div class="form-row">
+            <div>
+                <label for="prof-reason">Common rejection reason (required for Reject)</label>
+                <input id="prof-reason" type="text" name="reason" placeholder="Reason for bulk reject">
+            </div>
+            <div style="max-width: 320px; display:flex; gap:8px;">
+                <button type="submit" name="action" value="approve" class="btn btn-success" onclick="return validateBulk('prof', 'approve');">Approve Selected</button>
+                <button type="submit" name="action" value="reject" class="btn btn-danger" onclick="return validateBulk('prof', 'reject');">Reject Selected</button>
+            </div>
+        </div>
+        <table>
+            <tr><th><input type="checkbox" id="select-all-prof"></th><th>Student</th><th>Course</th><th>Single Actions</th></tr>
+            {% for e in prof_requests %}
+            <tr>
+                <td><input type="checkbox" class="prof-chk" name="enrollment_ids" value="{{ e.id }}"></td>
+                <td>{{ e.student.username }} ({{ e.student.roll_number|default:"-" }})</td>
+                <td>{{ e.course.code }} — {{ e.course.name }}</td>
+                <td>
+                    <a href="{% url 'professor_approve_enrollment' e.id %}?type=professor&next=dashboard" class="btn btn-success btn-sm">Approve</a>
+                    <span class="text-sm text-muted">Use checkbox + Reject Selected</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </form>
     {% endif %}
 
     {% if advisor_requests %}
     <h3 class="mt-16">As Faculty Advisor</h3>
-    <table>
-        <tr><th>Student</th><th>Course</th><th>Actions</th></tr>
-        {% for e in advisor_requests %}
-        <tr>
-            <td>{{ e.student.username }}</td>
-            <td>{{ e.course.code }} — {{ e.course.name }}</td>
-            <td>
-                <a href="{% url 'professor_approve_enrollment' e.id %}?type=advisor" class="btn btn-success btn-sm">Approve</a>
-                <a href="{% url 'professor_reject_enrollment' e.id %}" class="btn btn-danger btn-sm">Reject</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </table>
+    <form method="post" action="{% url 'professor_bulk_enrollment_action' %}" class="mb-8">
+        {% csrf_token %}
+        <input type="hidden" name="type" value="advisor">
+        <input type="hidden" name="next" value="dashboard">
+        <div class="form-row">
+            <div>
+                <label for="advisor-reason">Common rejection reason (required for Reject)</label>
+                <input id="advisor-reason" type="text" name="reason" placeholder="Reason for bulk reject">
+            </div>
+            <div style="max-width: 320px; display:flex; gap:8px;">
+                <button type="submit" name="action" value="approve" class="btn btn-success" onclick="return validateBulk('advisor', 'approve');">Approve Selected</button>
+                <button type="submit" name="action" value="reject" class="btn btn-danger" onclick="return validateBulk('advisor', 'reject');">Reject Selected</button>
+            </div>
+        </div>
+        <table>
+            <tr><th><input type="checkbox" id="select-all-advisor"></th><th>Student</th><th>Course</th><th>Single Actions</th></tr>
+            {% for e in advisor_requests %}
+            <tr>
+                <td><input type="checkbox" class="advisor-chk" name="enrollment_ids" value="{{ e.id }}"></td>
+                <td>{{ e.student.username }} ({{ e.student.roll_number|default:"-" }})</td>
+                <td>{{ e.course.code }} — {{ e.course.name }}</td>
+                <td>
+                    <a href="{% url 'professor_approve_enrollment' e.id %}?type=advisor&next=dashboard" class="btn btn-success btn-sm">Approve</a>
+                    <span class="text-sm text-muted">Use checkbox + Reject Selected</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </form>
     {% endif %}
 
-    {% else %}
+    {% if not prof_requests and not advisor_requests %}
     <p class="empty">No pending requests</p>
     {% endif %}
+
     <a href="{% url 'professor_approve_requests' %}" class="btn btn-primary btn-sm mt-8">View All Requests</a>
 </div>
+
+<script>
+document.getElementById('select-all-prof')?.addEventListener('change', function () {
+    document.querySelectorAll('.prof-chk').forEach(chk => { chk.checked = this.checked; });
+});
+
+document.getElementById('select-all-advisor')?.addEventListener('change', function () {
+    document.querySelectorAll('.advisor-chk').forEach(chk => { chk.checked = this.checked; });
+});
+
+function validateBulk(type, action) {
+    const rowClass = type === 'prof' ? '.prof-chk' : '.advisor-chk';
+    const reasonId = type === 'prof' ? 'prof-reason' : 'advisor-reason';
+    const checked = Array.from(document.querySelectorAll(rowClass)).filter(chk => chk.checked);
+    if (!checked.length) {
+        alert('Please select at least one student request.');
+        return false;
+    }
+
+    if (action === 'reject') {
+        const reason = document.getElementById(reasonId)?.value.trim();
+        if (!reason) {
+            alert('Please enter a rejection reason.');
+            return false;
+        }
+    }
+    return true;
+}
+</script>
 {% endblock %}

@@ -11,10 +11,11 @@
     <a href="{% url 'professor_add_exam' course.id %}" class="btn btn-success btn-sm mb-8">+ Add Exam</a>
     {% if exams %}
     <table>
-        <tr><th>Exam</th><th>Sections</th><th>Actions</th></tr>
+        <tr><th>Exam</th><th>Max Marks</th><th>Sections</th><th>Actions</th></tr>
         {% for exam in exams %}
         <tr>
             <td>{{ exam.name }}</td>
+            <td>{{ exam.max_marks }}</td>
             <td>{{ exam.sections.count }} sections</td>
             <td>
                 <a href="{% url 'professor_add_section' exam.id %}" class="btn btn-secondary btn-sm">+ Section</a>

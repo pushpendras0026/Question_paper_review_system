@@ -3,12 +3,16 @@ from django.contrib.auth import authenticate, login, logout, update_session_auth
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Q, Sum
 from django.utils import timezone
-from decimal import Decimal
+from django.views.decorators.cache import never_cache
+from decimal import Decimal, InvalidOperation
+from functools import wraps
+from pathlib import Path
 import statistics
 import csv
 import io
+import re
 
 from .models import (
     User, Course, Enrollment, FacultyAdvisor, Exam, ExamSection,
@@ -25,15 +29,192 @@ from .forms import (
 def role_required(role):
     """Decorator to restrict views to a specific role."""
     def decorator(view_func):
+        @wraps(view_func)
+        @never_cache
         def wrapper(request, *args, **kwargs):
             if not request.user.is_authenticated:
                 return redirect('login')
             if request.user.role != role and not (request.user.is_superuser and role == 'admin'):
-                messages.error(request, 'Access denied.')
+                current_role = request.user.role if getattr(request.user, 'role', None) else (
+                    'admin' if request.user.is_superuser else None
+                )
+                if current_role:
+                    messages.warning(request, 'Redirected to your own dashboard.')
+                    return redirect(f'{current_role}_dashboard')
                 return redirect('login')
             return view_func(request, *args, **kwargs)
         return wrapper
     return decorator
+
+
+def _normalize_text(value):
+    return re.sub(r'[^a-z0-9]+', '', (value or '').lower())
+
+
+def _course_search_suggestions(courses):
+    suggestions = set()
+    for course in courses:
+        professor_name = f"{course.professor.first_name} {course.professor.last_name}".strip()
+        suggestions.add(course.code)
+        suggestions.add(course.name)
+        suggestions.add(course.professor.username)
+        if professor_name:
+            suggestions.add(professor_name)
+    return sorted(s for s in suggestions if s)
+
+
+def _filter_courses_by_query(courses, query):
+    normalized_query = _normalize_text(query)
+    if not normalized_query:
+        return courses
+
+    filtered = []
+    for course in courses:
+        professor_name = f"{course.professor.first_name} {course.professor.last_name}".strip()
+        searchable_text = " ".join([
+            course.code,
+            course.name,
+            course.semester,
+            course.department or '',
+            course.professor.username,
+            professor_name,
+        ])
+        if normalized_query in _normalize_text(searchable_text):
+            filtered.append(course)
+    return filtered
+
+
+def _is_allowed_script_file(file_obj):
+    allowed_extensions = {
+        '.pdf', '.png', '.jpg', '.jpeg', '.webp', '.bmp', '.gif', '.tif', '.tiff'
+    }
+    extension = Path(file_obj.name).suffix.lower()
+    return extension in allowed_extensions
+
+
+def _extract_decimal_from_cell(value):
+    cleaned = str(value or '').strip()
+    if not cleaned:
+        return None
+
+    cleaned = cleaned.replace('%', '')
+    match = re.search(r'-?\d+(?:\.\d+)?', cleaned)
+    if not match:
+        return None
+
+    try:
+        return Decimal(match.group(0))
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _redirect_professor_request_page(request):
+    next_page = (request.POST.get('next') or request.GET.get('next') or '').strip()
+    if next_page == 'dashboard':
+        return redirect('professor_dashboard')
+    return redirect('professor_approve_requests')
+
+
+def _permission_summary(assignment):
+    return (
+        f"Upload Scripts: {'Yes' if assignment.can_upload_scripts else 'No'}, "
+        f"Resolve Queries: {'Yes' if assignment.can_resolve_queries else 'No'}, "
+        f"Update Marks: {'Yes' if assignment.can_update_marks else 'No'}"
+    )
+
+
+def _build_course_student_lookup(course):
+    approved_enrollments = Enrollment.objects.filter(
+        course=course, status='approved'
+    ).select_related('student')
+
+    student_lookup = {}
+    for enrollment in approved_enrollments:
+        student = enrollment.student
+        keys = [
+            student.roll_number,
+            student.username,
+            f"{student.first_name} {student.last_name}".strip(),
+            f"{student.last_name} {student.first_name}".strip(),
+        ]
+        for key in keys:
+            normalized_key = _normalize_text(key)
+            if normalized_key:
+                student_lookup[normalized_key] = student
+    return student_lookup
+
+
+def _import_csv_marks(csv_file, exam):
+    data_set = csv_file.read().decode('utf-8-sig', errors='ignore')
+
+    try:
+        dialect = csv.Sniffer().sniff(data_set[:2048], delimiters=',;\t|')
+    except csv.Error:
+        dialect = csv.excel
+
+    rows = list(csv.reader(io.StringIO(data_set), dialect=dialect))
+    if not rows:
+        return 0, 0, 'The CSV file is empty.'
+
+    student_lookup = _build_course_student_lookup(exam.course)
+
+    header_tokens = [_normalize_text(col) for col in rows[0]]
+    has_header = any(token in {
+        'roll', 'rollno', 'rollnumber', 'username', 'name', 'student', 'marks', 'score', 'total'
+    } for token in header_tokens)
+    data_rows = rows[1:] if has_header else rows
+
+    saved_count = 0
+    skipped_count = 0
+
+    for row in data_rows:
+        cells = [str(cell).strip() for cell in row if str(cell).strip()]
+        if not cells:
+            continue
+
+        matched_student = None
+        for cell in cells:
+            matched_student = student_lookup.get(_normalize_text(cell))
+            if matched_student:
+                break
+
+        parsed_marks = None
+        for cell in reversed(cells):
+            parsed_marks = _extract_decimal_from_cell(cell)
+            if parsed_marks is not None:
+                break
+
+        if (
+            not matched_student
+            or parsed_marks is None
+            or parsed_marks < Decimal('0')
+            or parsed_marks > exam.max_marks
+        ):
+            skipped_count += 1
+            continue
+
+        Mark.objects.update_or_create(
+            exam=exam,
+            student=matched_student,
+            section=None,
+            defaults={'marks': parsed_marks},
+        )
+        saved_count += 1
+
+    return saved_count, skipped_count, None
+
+
+def _student_exam_total(exam, student_id):
+    total_mark = Mark.objects.filter(
+        exam=exam, student_id=student_id, section__isnull=True
+    ).first()
+    if total_mark:
+        return Decimal(total_mark.marks)
+
+    section_sum = Mark.objects.filter(
+        exam=exam, student_id=student_id, section__isnull=False
+    ).aggregate(total=Sum('marks'))['total']
+    return Decimal(section_sum) if section_sum is not None else None
 
 
 # ==================== AUTH ====================
@@ -63,7 +244,11 @@ def login_view(request):
 
 def logout_view(request):
     logout(request)
-    return redirect('login')
+    response = redirect('login')
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    return response
 
 
 @login_required
@@ -108,6 +293,7 @@ def student_dashboard(request):
 @role_required('student')
 def student_add_course(request):
     current_semester = _get_current_semester()
+    search_query = request.GET.get('q', '').strip()
     
     # Filter courses by student department if set and keep open catalog
     courses_query = Course.objects.filter(is_active=True)
@@ -115,7 +301,13 @@ def student_add_course(request):
         courses_query = courses_query.filter(department=request.user.department)
 
     enrolled_course_ids = Enrollment.objects.filter(student=request.user).values_list('course_id', flat=True)
-    available_courses = courses_query.exclude(id__in=enrolled_course_ids)
+    available_courses = list(
+        courses_query.exclude(id__in=enrolled_course_ids).select_related('professor')
+    )
+    course_search_suggestions = _course_search_suggestions(available_courses)
+    if search_query:
+        available_courses = _filter_courses_by_query(available_courses, search_query)
+
     pending_enrollments = Enrollment.objects.filter(
         student=request.user, status__in=['pending_professor', 'pending_advisor']
     ).select_related('course')
@@ -135,6 +327,8 @@ def student_add_course(request):
 
     return render(request, 'core/student/add_course.html', {
         'available_courses': available_courses,
+        'search_query': search_query,
+        'course_search_suggestions': course_search_suggestions,
         'pending_enrollments': pending_enrollments,
         'current_semester': current_semester,
     })
@@ -311,8 +505,20 @@ def student_past_course(request, course_id):
 @login_required
 @role_required('professor')
 def professor_dashboard(request):
-    active_courses = Course.objects.filter(professor=request.user, is_active=True)
-    completed_courses = Course.objects.filter(professor=request.user, is_active=False)
+    search_query = request.GET.get('q', '').strip()
+    request_search_query = request.GET.get('request_q', '').strip()
+
+    active_courses = list(
+        Course.objects.filter(professor=request.user, is_active=True).select_related('professor')
+    )
+    completed_courses = list(
+        Course.objects.filter(professor=request.user, is_active=False).select_related('professor')
+    )
+
+    course_search_suggestions = _course_search_suggestions(active_courses + completed_courses)
+    if search_query:
+        active_courses = _filter_courses_by_query(active_courses, search_query)
+        completed_courses = _filter_courses_by_query(completed_courses, search_query)
 
     # Pending requests as professor
     prof_requests = Enrollment.objects.filter(
@@ -324,11 +530,30 @@ def professor_dashboard(request):
         student__faculty_advisor__advisor=request.user, status='pending_advisor'
     ).select_related('student', 'course')
 
+    if request_search_query:
+        request_terms = request_search_query
+        request_filter = (
+            Q(student__username__icontains=request_terms)
+            | Q(student__first_name__icontains=request_terms)
+            | Q(student__last_name__icontains=request_terms)
+            | Q(student__roll_number__icontains=request_terms)
+            | Q(course__code__icontains=request_terms)
+            | Q(course__name__icontains=request_terms)
+        )
+        prof_requests = prof_requests.filter(request_filter)
+        advisor_requests = advisor_requests.filter(request_filter)
+
+    notifications = request.user.notifications.order_by('-created_at')[:8]
+
     return render(request, 'core/professor/dashboard.html', {
         'active_courses': active_courses,
         'completed_courses': completed_courses,
+        'search_query': search_query,
+        'request_search_query': request_search_query,
+        'course_search_suggestions': course_search_suggestions,
         'prof_requests': prof_requests,
         'advisor_requests': advisor_requests,
+        'notifications': notifications,
     })
 
 
@@ -399,12 +624,23 @@ def professor_upload_scripts(request, exam_id):
     if request.method == 'POST':
         student_id = request.POST.get('student_id')
         student = get_object_or_404(User, id=student_id, role='student')
-        if 'file' in request.FILES:
+        if not Enrollment.objects.filter(course=exam.course, student=student, status='approved').exists():
+            messages.error(request, 'Selected student is not enrolled in this course.')
+            return redirect('professor_upload_scripts', exam_id=exam.id)
+
+        file_obj = request.FILES.get('file')
+        if file_obj:
+            if not _is_allowed_script_file(file_obj):
+                messages.error(request, 'Unsupported file format. Upload PDF, PNG, JPG, JPEG, WEBP, BMP, GIF, TIF, or TIFF.')
+                return redirect('professor_upload_scripts', exam_id=exam.id)
+
             script, created = AnswerScript.objects.update_or_create(
                 exam=exam, student=student,
-                defaults={'file': request.FILES['file'], 'uploaded_by': request.user}
+                defaults={'file': file_obj, 'uploaded_by': request.user}
             )
             messages.success(request, f'Answer script uploaded for {student.username}.')
+        else:
+            messages.error(request, 'Please choose a file to upload.')
         return redirect('professor_upload_scripts', exam_id=exam.id)
 
     existing_scripts = AnswerScript.objects.filter(exam=exam).select_related('student')
@@ -425,25 +661,49 @@ def professor_enter_marks(request, exam_id):
     sections = exam.sections.all()
 
     if request.method == 'POST':
+        saved_count = 0
+        skipped_count = 0
         for enrollment in enrolled_students:
             student = enrollment.student
             if sections.exists():
                 for section in sections:
                     marks_val = request.POST.get(f'marks_{student.id}_{section.id}')
                     if marks_val:
+                        try:
+                            parsed_marks = Decimal(marks_val)
+                        except (InvalidOperation, TypeError):
+                            skipped_count += 1
+                            continue
+                        if parsed_marks < 0 or parsed_marks > exam.max_marks:
+                            skipped_count += 1
+                            continue
                         Mark.objects.update_or_create(
                             exam=exam, student=student, section=section,
-                            defaults={'marks': Decimal(marks_val)}
+                            defaults={'marks': parsed_marks}
                         )
+                        saved_count += 1
             # Total marks (no section)
             total_marks = request.POST.get(f'marks_{student.id}_total')
             if total_marks:
+                try:
+                    parsed_total = Decimal(total_marks)
+                except (InvalidOperation, TypeError):
+                    skipped_count += 1
+                    continue
+                if parsed_total < 0 or parsed_total > exam.max_marks:
+                    skipped_count += 1
+                    continue
                 Mark.objects.update_or_create(
                     exam=exam, student=student, section=None,
-                    defaults={'marks': Decimal(total_marks)}
+                    defaults={'marks': parsed_total}
                 )
-        messages.success(request, 'Marks saved.')
-        return redirect('professor_course_detail', course_id=exam.course_id)
+                saved_count += 1
+
+        if skipped_count:
+            messages.warning(request, f'Marks saved for {saved_count} value(s). Skipped {skipped_count} invalid value(s).')
+        else:
+            messages.success(request, f'Marks saved for {saved_count} value(s).')
+        return redirect('professor_enter_marks', exam_id=exam.id)
 
     # Get existing marks
     existing_marks = {}
@@ -471,29 +731,14 @@ def professor_upload_csv_marks(request, exam_id):
             messages.error(request, 'Please upload a valid CSV file.')
             return redirect('professor_enter_marks', exam_id=exam.id)
             
-        data_set = csv_file.read().decode('UTF-8')
-        io_string = io.StringIO(data_set)
-        
-        next(io_string)  # skip header
-        count = 0
-        for row in csv.reader(io_string, delimiter=',', quotechar='"'):
-            if len(row) >= 2:
-                roll_no = row[0].strip()
-                marks_val = row[1].strip()
-                
-                try:
-                    student = User.objects.get(role='student', roll_number=roll_no)
-                    
-                    if Enrollment.objects.filter(student=student, course=exam.course, status='approved').exists():
-                        Mark.objects.update_or_create(
-                            exam=exam, student=student, section=None,
-                            defaults={'marks': Decimal(marks_val)}
-                        )
-                        count += 1
-                except (User.DoesNotExist, ValueError, TypeError):
-                    continue
-                    
-        messages.success(request, f'Successfully parsed and saved {count} student marks from CSV.')
+        count, skipped, error = _import_csv_marks(csv_file, exam)
+        if error:
+            messages.error(request, error)
+        else:
+            messages.success(
+                request,
+                f'Saved marks for {count} student(s). Skipped {skipped} row(s) due to missing student match or invalid/out-of-range marks.'
+            )
         
     return redirect('professor_enter_marks', exam_id=exam.id)
 
@@ -559,7 +804,7 @@ def professor_approve_enrollment(request, enrollment_id):
             enrollment.save()
             messages.success(request, 'No advisor assigned. Auto-approved.')
 
-    return redirect('professor_approve_requests')
+    return _redirect_professor_request_page(request)
 
 
 @login_required
@@ -574,7 +819,7 @@ def professor_reject_enrollment(request, enrollment_id):
             enrollment.rejection_reason = reason
             enrollment.save()
             messages.success(request, 'Enrollment request rejected.')
-    return redirect('professor_approve_requests')
+    return _redirect_professor_request_page(request)
 
 
 @login_required
@@ -582,7 +827,7 @@ def professor_reject_enrollment(request, enrollment_id):
 def professor_bulk_enrollment_action(request):
     """Handle bulk approve or bulk reject with common reason."""
     if request.method != 'POST':
-        return redirect('professor_approve_requests')
+        return _redirect_professor_request_page(request)
 
     action = request.POST.get('action')          # 'approve' or 'reject'
     approval_type = request.POST.get('type', 'professor')  # 'professor' or 'advisor'
@@ -591,7 +836,7 @@ def professor_bulk_enrollment_action(request):
 
     if not enrollment_ids:
         messages.warning(request, 'No enrollments selected.')
-        return redirect('professor_approve_requests')
+        return _redirect_professor_request_page(request)
 
     enrollments = Enrollment.objects.filter(id__in=enrollment_ids).select_related('student', 'course')
     count = 0
@@ -617,7 +862,7 @@ def professor_bulk_enrollment_action(request):
         elif action == 'reject':
             if not reason:
                 messages.error(request, 'A rejection reason is required for bulk reject.')
-                return redirect('professor_approve_requests')
+                return _redirect_professor_request_page(request)
             can_reject = (
                 (approval_type == 'professor' and enrollment.course.professor == request.user) or
                 (approval_type == 'advisor' and FacultyAdvisor.objects.filter(
@@ -631,7 +876,7 @@ def professor_bulk_enrollment_action(request):
 
     action_word = 'approved' if action == 'approve' else 'rejected'
     messages.success(request, f'{count} enrollment(s) {action_word} successfully.')
-    return redirect('professor_approve_requests')
+    return _redirect_professor_request_page(request)
 
 
 @login_required
@@ -642,15 +887,44 @@ def professor_manage_tas(request, course_id):
     ta_assignments = TAAssignment.objects.filter(course=course).select_related('ta')
 
     if request.method == 'POST':
+        action = request.POST.get('action', 'add')
+
+        if action == 'update_access':
+            assignment = get_object_or_404(
+                TAAssignment,
+                id=request.POST.get('assignment_id'),
+                course=course,
+            )
+            assignment.can_upload_scripts = 'can_upload_scripts' in request.POST
+            assignment.can_resolve_queries = 'can_resolve_queries' in request.POST
+            assignment.can_update_marks = 'can_update_marks' in request.POST
+            assignment.save(update_fields=['can_upload_scripts', 'can_resolve_queries', 'can_update_marks'])
+
+            Notification.objects.create(
+                user=assignment.ta,
+                message=(
+                    f"Professor {request.user.username} updated your TA access for {course.code}. "
+                    f"{_permission_summary(assignment)}"
+                )
+            )
+            messages.success(request, f'Updated access for TA {assignment.ta.username}.')
+            return redirect('professor_manage_tas', course_id=course.id)
+
         form = TAAssignmentForm(request.POST)
         if form.is_valid():
             assignment = form.save(commit=False)
             assignment.course = course
-            # Check if TA already assigned
             if TAAssignment.objects.filter(ta=assignment.ta, course=course).exists():
-                messages.warning(request, 'TA already assigned to this course.')
+                messages.warning(request, 'TA already assigned to this course. Use update access below.')
             else:
                 assignment.save()
+                Notification.objects.create(
+                    user=assignment.ta,
+                    message=(
+                        f"Professor {request.user.username} assigned you as TA for {course.code}. "
+                        f"{_permission_summary(assignment)}"
+                    )
+                )
                 messages.success(request, f'TA {assignment.ta.username} assigned.')
             return redirect('professor_manage_tas', course_id=course.id)
     else:
@@ -736,20 +1010,40 @@ def professor_respond_query(request, query_id):
 @role_required('professor')
 def professor_assign_grades(request, course_id):
     course = get_object_or_404(Course, id=course_id, professor=request.user, is_active=True)
-    enrollments = Enrollment.objects.filter(course=course, status='approved').select_related('student')
+    enrollments = list(Enrollment.objects.filter(course=course, status='approved').select_related('student'))
+    exams = list(course.exams.all())
     
     if request.method == 'POST':
         for enrollment in enrollments:
-            grade_val = request.POST.get(f'grade_{enrollment.id}')
-            if grade_val:
-                enrollment.grade = grade_val
-                enrollment.save()
+            grade_val = (request.POST.get(f'grade_{enrollment.id}') or '').strip()
+            enrollment.grade = grade_val or None
+            enrollment.save(update_fields=['grade'])
         messages.success(request, 'Grades saved successfully.')
-        return redirect('professor_course_detail', course_id=course.id)
+        return redirect('professor_assign_grades', course_id=course.id)
+
+    grade_rows = []
+    for enrollment in enrollments:
+        weighted_total = Decimal('0')
+        raw_total = Decimal('0')
+        for exam in exams:
+            total_mark = _student_exam_total(exam, enrollment.student_id)
+            if total_mark is None:
+                continue
+            raw_total += total_mark
+            if exam.max_marks > 0:
+                weighted_total += (total_mark / exam.max_marks) * Decimal('100')
+
+        grade_rows.append({
+            'enrollment': enrollment,
+            'weighted_total': round(weighted_total, 2),
+            'raw_total': round(raw_total, 2),
+        })
+
+    grade_rows.sort(key=lambda row: row['weighted_total'], reverse=True)
         
     return render(request, 'core/professor/assign_grades.html', {
         'course': course,
-        'enrollments': enrollments,
+        'grade_rows': grade_rows,
     })
 
 
@@ -814,9 +1108,13 @@ def admin_ended_courses(request):
 @login_required
 @role_required('ta')
 def ta_dashboard(request):
-    assignments = TAAssignment.objects.filter(
+    assignments = list(TAAssignment.objects.filter(
         ta=request.user, course__is_active=True
-    ).select_related('course')
+    ).select_related('course'))
+
+    for assignment in assignments:
+        assignment.first_exam = assignment.course.exams.order_by('id').first()
+
     return render(request, 'core/ta/dashboard.html', {
         'assignments': assignments,
     })
@@ -873,11 +1171,38 @@ def admin_force_enroll(request):
 def admin_view_course_grades(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     enrollments = Enrollment.objects.filter(course=course, status='approved').select_related('student')
+    ungraded_count = enrollments.filter(Q(grade__isnull=True) | Q(grade='')).count()
         
     return render(request, 'core/admin/view_grades.html', {
         'course': course,
-        'enrollments': enrollments
+        'enrollments': enrollments,
+        'ungraded_count': ungraded_count,
     })
+
+
+@login_required
+@role_required('admin')
+def admin_notify_grade_pending(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+    if request.method == 'POST':
+        pending_count = Enrollment.objects.filter(
+            course=course,
+            status='approved'
+        ).filter(Q(grade__isnull=True) | Q(grade='')).count()
+
+        if pending_count:
+            Notification.objects.create(
+                user=course.professor,
+                message=(
+                    f"Admin reminder: {pending_count} student(s) in {course.code} still need grades. "
+                    "Please complete grade assignment."
+                )
+            )
+            messages.success(request, 'Reminder sent to the course professor.')
+        else:
+            messages.info(request, 'All grades are already assigned.')
+
+    return redirect('admin_view_course_grades', course_id=course.id)
 
 @login_required
 @role_required('ta')
@@ -896,9 +1221,11 @@ def ta_course_detail(request, assignment_id):
 @login_required
 @role_required('ta')
 def ta_upload_scripts(request, assignment_id, exam_id):
-    assignment = get_object_or_404(
-        TAAssignment, id=assignment_id, ta=request.user, can_upload_scripts=True
-    )
+    assignment = get_object_or_404(TAAssignment, id=assignment_id, ta=request.user)
+    if not assignment.can_upload_scripts:
+        messages.error(request, 'Upload scripts permission is not granted for this course.')
+        return redirect('ta_course_detail', assignment_id=assignment.id)
+
     exam = get_object_or_404(Exam, id=exam_id, course=assignment.course)
     enrolled_students = Enrollment.objects.filter(
         course=assignment.course, status='approved'
@@ -907,12 +1234,23 @@ def ta_upload_scripts(request, assignment_id, exam_id):
     if request.method == 'POST':
         student_id = request.POST.get('student_id')
         student = get_object_or_404(User, id=student_id, role='student')
-        if 'file' in request.FILES:
+        if not Enrollment.objects.filter(course=assignment.course, student=student, status='approved').exists():
+            messages.error(request, 'Selected student is not enrolled in this course.')
+            return redirect('ta_upload_scripts', assignment_id=assignment.id, exam_id=exam.id)
+
+        file_obj = request.FILES.get('file')
+        if file_obj:
+            if not _is_allowed_script_file(file_obj):
+                messages.error(request, 'Unsupported file format. Upload PDF, PNG, JPG, JPEG, WEBP, BMP, GIF, TIF, or TIFF.')
+                return redirect('ta_upload_scripts', assignment_id=assignment.id, exam_id=exam.id)
+
             script, created = AnswerScript.objects.update_or_create(
                 exam=exam, student=student,
-                defaults={'file': request.FILES['file'], 'uploaded_by': request.user}
+                defaults={'file': file_obj, 'uploaded_by': request.user}
             )
             messages.success(request, f'Answer script uploaded for {student.username}.')
+        else:
+            messages.error(request, 'Please choose a file to upload.')
         return redirect('ta_upload_scripts', assignment_id=assignment.id, exam_id=exam.id)
 
     existing_scripts = AnswerScript.objects.filter(exam=exam).select_related('student')
@@ -927,9 +1265,11 @@ def ta_upload_scripts(request, assignment_id, exam_id):
 @login_required
 @role_required('ta')
 def ta_view_queries(request, assignment_id):
-    assignment = get_object_or_404(
-        TAAssignment, id=assignment_id, ta=request.user, can_resolve_queries=True
-    )
+    assignment = get_object_or_404(TAAssignment, id=assignment_id, ta=request.user)
+    if not assignment.can_resolve_queries:
+        messages.error(request, 'Resolve queries permission is not granted for this course.')
+        return redirect('ta_course_detail', assignment_id=assignment.id)
+
     queries = Query.objects.filter(
         answer_script__exam__course=assignment.course
     ).select_related('answer_script__exam', 'answer_script__student', 'raised_by')
@@ -944,10 +1284,11 @@ def ta_view_queries(request, assignment_id):
 @role_required('ta')
 def ta_respond_query(request, query_id):
     query = get_object_or_404(Query, id=query_id)
-    assignment = get_object_or_404(
-        TAAssignment, ta=request.user, course=query.answer_script.exam.course,
-        can_resolve_queries=True
-    )
+    assignment = get_object_or_404(TAAssignment, ta=request.user, course=query.answer_script.exam.course)
+    if not assignment.can_resolve_queries:
+        messages.error(request, 'Resolve queries permission is not granted for this course.')
+        return redirect('ta_course_detail', assignment_id=assignment.id)
+
     if request.method == 'POST':
         form = QueryResponseForm(request.POST)
         if form.is_valid():
@@ -967,9 +1308,11 @@ def ta_respond_query(request, query_id):
 @login_required
 @role_required('ta')
 def ta_update_marks(request, assignment_id, exam_id):
-    assignment = get_object_or_404(
-        TAAssignment, id=assignment_id, ta=request.user, can_update_marks=True
-    )
+    assignment = get_object_or_404(TAAssignment, id=assignment_id, ta=request.user)
+    if not assignment.can_update_marks:
+        messages.error(request, 'Update marks permission is not granted for this course.')
+        return redirect('ta_course_detail', assignment_id=assignment.id)
+
     exam = get_object_or_404(Exam, id=exam_id, course=assignment.course)
     enrolled_students = Enrollment.objects.filter(
         course=assignment.course, status='approved'
@@ -977,6 +1320,8 @@ def ta_update_marks(request, assignment_id, exam_id):
     sections = exam.sections.all()
 
     if request.method == 'POST':
+        saved_count = 0
+        skipped_count = 0
         for enrollment in enrolled_students:
             student = enrollment.student
             if sections.exists():
@@ -984,6 +1329,15 @@ def ta_update_marks(request, assignment_id, exam_id):
                     marks_val = request.POST.get(f'marks_{student.id}_{section.id}')
                     comment = request.POST.get(f'comment_{student.id}_{section.id}', '')
                     if marks_val:
+                        try:
+                            parsed_marks = Decimal(marks_val)
+                        except (InvalidOperation, TypeError):
+                            skipped_count += 1
+                            continue
+                        if parsed_marks < 0 or parsed_marks > exam.max_marks:
+                            skipped_count += 1
+                            continue
+
                         old_mark = Mark.objects.filter(
                             exam=exam, student=student, section=section
                         ).first()
@@ -991,14 +1345,24 @@ def ta_update_marks(request, assignment_id, exam_id):
                         Mark.objects.update_or_create(
                             exam=exam, student=student, section=section,
                             defaults={
-                                'marks': Decimal(marks_val),
+                                'marks': parsed_marks,
                                 'old_marks': old_val,
                                 'comment': comment or None,
                             }
                         )
+                        saved_count += 1
             total_marks = request.POST.get(f'marks_{student.id}_total')
             comment = request.POST.get(f'comment_{student.id}_total', '')
             if total_marks:
+                try:
+                    parsed_total = Decimal(total_marks)
+                except (InvalidOperation, TypeError):
+                    skipped_count += 1
+                    continue
+                if parsed_total < 0 or parsed_total > exam.max_marks:
+                    skipped_count += 1
+                    continue
+
                 old_mark = Mark.objects.filter(
                     exam=exam, student=student, section=None
                 ).first()
@@ -1006,13 +1370,18 @@ def ta_update_marks(request, assignment_id, exam_id):
                 Mark.objects.update_or_create(
                     exam=exam, student=student, section=None,
                     defaults={
-                        'marks': Decimal(total_marks),
+                        'marks': parsed_total,
                         'old_marks': old_val,
                         'comment': comment or None,
                     }
                 )
-        messages.success(request, 'Marks updated.')
-        return redirect('ta_course_detail', assignment_id=assignment.id)
+                saved_count += 1
+
+        if skipped_count:
+            messages.warning(request, f'Marks updated for {saved_count} value(s). Skipped {skipped_count} invalid value(s).')
+        else:
+            messages.success(request, f'Marks updated for {saved_count} value(s).')
+        return redirect('ta_update_marks', assignment_id=assignment.id, exam_id=exam.id)
 
     existing_marks = {}
     for mark in Mark.objects.filter(exam=exam):
@@ -1023,13 +1392,44 @@ def ta_update_marks(request, assignment_id, exam_id):
             'comment': mark.comment,
         }
 
+    history_rows = Mark.objects.filter(exam=exam).select_related('student', 'section').order_by('student__username', 'section__name')
+
     return render(request, 'core/ta/update_marks.html', {
         'assignment': assignment,
         'exam': exam,
         'enrolled_students': enrolled_students,
         'sections': sections,
         'existing_marks': existing_marks,
+        'history_rows': history_rows,
     })
+
+
+@login_required
+@role_required('ta')
+def ta_upload_csv_marks(request, assignment_id, exam_id):
+    assignment = get_object_or_404(TAAssignment, id=assignment_id, ta=request.user)
+    if not assignment.can_update_marks:
+        messages.error(request, 'Update marks permission is not granted for this course.')
+        return redirect('ta_course_detail', assignment_id=assignment.id)
+
+    exam = get_object_or_404(Exam, id=exam_id, course=assignment.course)
+
+    if request.method == 'POST' and 'csv_file' in request.FILES:
+        csv_file = request.FILES['csv_file']
+        if not csv_file.name.endswith('.csv'):
+            messages.error(request, 'Please upload a valid CSV file.')
+            return redirect('ta_update_marks', assignment_id=assignment.id, exam_id=exam.id)
+
+        count, skipped, error = _import_csv_marks(csv_file, exam)
+        if error:
+            messages.error(request, error)
+        else:
+            messages.success(
+                request,
+                f'Saved marks for {count} student(s). Skipped {skipped} row(s) due to missing student match or invalid/out-of-range marks.'
+            )
+
+    return redirect('ta_update_marks', assignment_id=assignment.id, exam_id=exam.id)
 
 
 # ==================== HELPERS ====================

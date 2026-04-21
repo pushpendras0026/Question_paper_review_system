@@ -11,7 +11,7 @@
     <table>
         <tr><th>Permission</th><th>Status</th></tr>
         <tr><td>Upload Answer Scripts</td><td>{% if assignment.can_upload_scripts %}<span class="badge badge-approved">Granted</span>{% else %}<span class="badge badge-rejected">Not Granted</span>{% endif %}</td></tr>
-        <tr><td>Resolve Queries & Update Marks</td><td>{% if assignment.can_resolve_queries %}<span class="badge badge-approved">Granted</span>{% else %}<span class="badge badge-rejected">Not Granted</span>{% endif %}</td></tr>
+        <tr><td>Resolve Queries</td><td>{% if assignment.can_resolve_queries %}<span class="badge badge-approved">Granted</span>{% else %}<span class="badge badge-rejected">Not Granted</span>{% endif %}</td></tr>
         <tr><td>Update Marks</td><td>{% if assignment.can_update_marks %}<span class="badge badge-approved">Granted</span>{% else %}<span class="badge badge-rejected">Not Granted</span>{% endif %}</td></tr>
     </table>
 </div>
@@ -31,6 +31,9 @@
                 {% if assignment.can_update_marks %}
                 <a href="{% url 'ta_update_marks' assignment.id exam.id %}" class="btn btn-primary btn-sm">Update Marks</a>
                 {% endif %}
+                {% if not assignment.can_upload_scripts and not assignment.can_update_marks %}
+                <span class="text-sm text-muted">No exam actions granted</span>
+                {% endif %}
             </td>
         </tr>
         {% endfor %}
@@ -44,6 +47,8 @@
     <h2>Other Actions</h2>
     {% if assignment.can_resolve_queries %}
     <a href="{% url 'ta_view_queries' assignment.id %}" class="btn btn-primary btn-sm">View & Resolve Queries</a>
+    {% else %}
+    <p class="text-sm text-muted">Resolve queries access is not granted for this course.</p>
     {% endif %}
 </div>
 

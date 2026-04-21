@@ -1,8 +1,10 @@
 {% extends "core/base.html" %}
+{% load qprs_extras %}
 {% block title %}Enter Marks — {{ exam.name }}{% endblock %}
 {% block content %}
 <div class="card">
     <h2>Enter Marks — {{ exam.name }} ({{ exam.course.code }})</h2>
+    <p class="text-sm text-muted">Maximum marks for this exam: {{ exam.max_marks }}</p>
     
     <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
         <h3>Upload CSV (Roll No, Marks)</h3>
@@ -28,14 +30,25 @@
                 <td>{{ e.student.username }}</td>
                 {% for section in sections %}
                 <td>
-                    <input type="number" step="0.01" name="marks_{{ e.student.id }}_{{ section.id }}"
-                           value="{{ existing_marks|dictsort:''|default:'' }}"
+                    {% with sid=e.student.id|stringformat:'d' %}
+                    {% with secid=section.id|stringformat:'d' %}
+                    {% with key=sid|add:'_'|add:secid %}
+                    <input type="number" step="0.01" min="0" max="{{ exam.max_marks }}" name="marks_{{ e.student.id }}_{{ section.id }}"
+                           value="{{ existing_marks|get_item:key|default:'' }}"
                            style="width:80px;">
+                    {% endwith %}
+                    {% endwith %}
+                    {% endwith %}
                 </td>
                 {% endfor %}
                 <td>
-                    <input type="number" step="0.01" name="marks_{{ e.student.id }}_total"
+                    {% with sid=e.student.id|stringformat:'d' %}
+                    {% with key=sid|add:'_total' %}
+                    <input type="number" step="0.01" min="0" max="{{ exam.max_marks }}" name="marks_{{ e.student.id }}_total"
+                           value="{{ existing_marks|get_item:key|default:'' }}"
                            style="width:80px;">
+                    {% endwith %}
+                    {% endwith %}
                 </td>
             </tr>
             {% endfor %}
@@ -43,5 +56,26 @@
         <button type="submit" class="btn btn-primary mt-8">Save Marks</button>
     </form>
 </div>
+
+{% if enrolled_students %}
+<div class="card">
+    <h2>Current Total Marks Snapshot</h2>
+    <table>
+        <tr><th>Student</th><th>Total Marks</th></tr>
+        {% for e in enrolled_students %}
+        <tr>
+            <td>{{ e.student.username }}</td>
+            <td>
+                {% with sid=e.student.id|stringformat:'d' %}
+                {% with key=sid|add:'_total' %}
+                {{ existing_marks|get_item:key|default:"-" }}
+                {% endwith %}
+                {% endwith %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
 <a href="{% url 'professor_course_detail' exam.course_id %}" class="btn btn-secondary">← Back</a>
 {% endblock %}

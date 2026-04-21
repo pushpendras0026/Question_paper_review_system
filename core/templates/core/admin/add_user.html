@@ -3,6 +3,7 @@
 {% block content %}
 <div class="card">
     <h2>{{ title }}</h2>
+    <p class="text-sm text-muted">Use official institute email only (must end with @iitg.ac.in). Department must be selected from the dropdown.</p>
     <form method="post">
         {% csrf_token %}
         <table style="max-width: 600px;">

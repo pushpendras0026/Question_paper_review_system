@@ -5,6 +5,7 @@
     <h2>Manage TAs — {{ course.code }}</h2>
     <form method="post">
         {% csrf_token %}
+        <input type="hidden" name="action" value="add">
         <div class="form-row">
             <div>
                 <label>TA</label>
@@ -32,6 +33,21 @@
             <td>{% if ta.can_resolve_queries %}<span class="badge badge-approved">Yes</span>{% else %}<span class="badge badge-rejected">No</span>{% endif %}</td>
             <td>{% if ta.can_update_marks %}<span class="badge badge-approved">Yes</span>{% else %}<span class="badge badge-rejected">No</span>{% endif %}</td>
             <td>
+                <form method="post" style="display:inline; margin-right:8px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_access">
+                    <input type="hidden" name="assignment_id" value="{{ ta.id }}">
+                    <label class="text-sm" style="display:inline-block; margin-right:8px;">
+                        <input type="checkbox" name="can_upload_scripts" {% if ta.can_upload_scripts %}checked{% endif %}> Upload
+                    </label>
+                    <label class="text-sm" style="display:inline-block; margin-right:8px;">
+                        <input type="checkbox" name="can_resolve_queries" {% if ta.can_resolve_queries %}checked{% endif %}> Queries
+                    </label>
+                    <label class="text-sm" style="display:inline-block; margin-right:8px;">
+                        <input type="checkbox" name="can_update_marks" {% if ta.can_update_marks %}checked{% endif %}> Marks
+                    </label>
+                    <button type="submit" class="btn btn-primary btn-sm">Update Access</button>
+                </form>
                 <form action="{% url 'professor_remove_ta' course.id ta.id %}" method="post" style="display:inline; margin:0;" onsubmit="return confirm('Are you sure you want to remove this TA?');">
                     {% csrf_token %}
                     <input type="text" name="reason" placeholder="Reason for removal..." required style="width:140px; display:inline-block; margin-bottom:0;" class="text-sm">

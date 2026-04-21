@@ -4,6 +4,15 @@
 <div class="card">
     <h2>Grade Card for {{ course.code }}</h2>
     <p><strong>Professor:</strong> {{ course.professor.username }}</p>
+    {% if ungraded_count %}
+    <p class="text-sm" style="color:#b45309;"><strong>{{ ungraded_count }}</strong> student(s) are still ungraded.</p>
+    <form method="post" action="{% url 'admin_notify_grade_pending' course.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-warning btn-sm">Send Reminder to Professor</button>
+    </form>
+    {% else %}
+    <p class="text-sm" style="color:#166534;">All student grades are assigned.</p>
+    {% endif %}
 </div>
 
 <div class="card">
@@ -13,11 +22,21 @@
         <tr>
             <th>Roll Number</th>
             <th>Name</th>
+            <th>Grade</th>
+            <th>Status</th>
         </tr>
         {% for en in enrollments %}
         <tr>
             <td>{{ en.student.roll_number }}</td>
             <td>{{ en.student.username }}</td>
+            <td>{{ en.grade|default:"-" }}</td>
+            <td>
+                {% if en.grade %}
+                <span class="badge badge-approved">Assigned</span>
+                {% else %}
+                <span class="badge badge-pending">Pending</span>
+                {% endif %}
+            </td>
         </tr>
         {% endfor %}
     </table>

@@ -14,6 +14,9 @@
         .navbar h1 { font-size: 18px; font-weight: 600; }
         .navbar a { color: #edf2f7; text-decoration: none; margin-left: 16px; font-size: 14px; font-weight: 500; }
         .navbar a:hover { color: #63b3ed; text-decoration: none; }
+        .nav-inline-form { margin: 0; }
+        .nav-link-btn { background: none; border: none; color: #edf2f7; font-size: 14px; font-weight: 500; cursor: pointer; }
+        .nav-link-btn:hover { color: #63b3ed; }
         .container { max-width: 1000px; margin: 32px auto; padding: 0 16px; }
         .card { background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: transform 0.2s, box-shadow 0.2s; }
         .card:hover { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
@@ -31,6 +34,8 @@
         .btn-danger:hover { background: #c0392b; }
         .btn-secondary { background: #7f8c8d; }
         .btn-secondary:hover { background: #6c7a7b; }
+        .btn-warning { background: #f59e0b; }
+        .btn-warning:hover { background: #d97706; }
         .btn-sm { padding: 4px 10px; font-size: 12px; }
         form { margin-top: 8px; }
         input[type="text"], input[type="password"], input[type="number"], input[type="file"],
@@ -69,14 +74,17 @@
 
             <span class="text-sm">{{ user.username }}</span>
             <a href="{% url 'change_password' %}" class="text-sm">Change Password</a>
-            <a href="{% url 'logout' %}">Logout</a>
+            <form method="post" action="{% url 'logout' %}" class="nav-inline-form" id="logout-form">
+                {% csrf_token %}
+                <button type="submit" class="nav-link-btn">Logout</button>
+            </form>
         </div>
     </nav>
     {% endif %}
 
     <div class="container">
         <div style="margin-bottom: 16px;">
-            <button onclick="window.history.back();" class="btn btn-secondary btn-sm">❮ Back</button>
+            <button onclick="return handleBackClick();" class="btn btn-secondary btn-sm">❮ Back</button>
         </div>
         {% if messages %}
         <ul class="messages">
@@ -88,5 +96,20 @@
 
         {% block content %}{% endblock %}
     </div>
+
+    <script>
+        function handleBackClick() {
+            const shouldLogout = confirm('Do you want to logout from this session?');
+            if (shouldLogout) {
+                const logoutForm = document.getElementById('logout-form');
+                if (logoutForm) {
+                    logoutForm.submit();
+                } else {
+                    window.location.href = '/';
+                }
+            }
+            return false;
+        }
+    </script>
 </body>
 </html>

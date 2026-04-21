@@ -37,7 +37,7 @@ class FacultyAdvisorAdmin(admin.ModelAdmin):
 
 @admin.register(Exam)
 class ExamAdmin(admin.ModelAdmin):
-    list_display = ('name', 'course', 'created_at')
+    list_display = ('name', 'course', 'max_marks', 'created_at')
 
 
 @admin.register(ExamSection)

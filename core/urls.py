@@ -1,11 +1,9 @@
 from django.urls import path
 from . import views
-from django.contrib import admin
 
 
 urlpatterns = [
     # Auth
-    path('admin/', admin.site.urls),
     path('', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('change-password/', views.change_password, name='change_password'),
@@ -47,6 +45,7 @@ urlpatterns = [
     path('app-admin/add-faculty/', views.admin_add_faculty, name='admin_add_faculty'),
     path('app-admin/add-student/', views.admin_add_student, name='admin_add_student'),
     path('app-admin/course/<int:course_id>/grades/', views.admin_view_course_grades, name='admin_view_course_grades'),
+    path('app-admin/course/<int:course_id>/notify-grade-pending/', views.admin_notify_grade_pending, name='admin_notify_grade_pending'),
 
     # TA URLs
     path('ta/', views.ta_dashboard, name='ta_dashboard'),
@@ -55,4 +54,5 @@ urlpatterns = [
     path('ta/course/<int:assignment_id>/queries/', views.ta_view_queries, name='ta_view_queries'),
     path('ta/query/<int:query_id>/respond/', views.ta_respond_query, name='ta_respond_query'),
     path('ta/course/<int:assignment_id>/marks/<int:exam_id>/', views.ta_update_marks, name='ta_update_marks'),
+    path('ta/course/<int:assignment_id>/marks/<int:exam_id>/upload-csv/', views.ta_upload_csv_marks, name='ta_upload_csv_marks'),
 ]

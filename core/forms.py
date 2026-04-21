@@ -1,8 +1,37 @@
 from django import forms
+from django.utils import timezone
 from .models import (
     User, Course, Exam, ExamSection, AnswerScript, Mark, Query,
     TAAssignment, Enrollment
 )
+
+
+DEPARTMENT_CHOICES = [
+    ('', 'Select Department'),
+    ('CSE', 'CSE'),
+    ('ECE', 'ECE'),
+    ('EEE', 'EEE'),
+    ('ME', 'ME'),
+    ('CE', 'CE'),
+    ('Chemical', 'Chemical'),
+    ('Biosciences', 'Biosciences'),
+    ('Mathematics', 'Mathematics'),
+    ('Physics', 'Physics'),
+    ('Chemistry', 'Chemistry'),
+    ('Humanities', 'Humanities'),
+]
+
+
+def get_semester_choices():
+    current_year = timezone.now().year
+    years = [current_year - 1, current_year, current_year + 1, current_year + 2]
+    terms = ['Spring', 'Summer', 'Fall']
+    choices = [('', 'Select Semester')]
+    for year in years:
+        for term in terms:
+            value = f'{term} {year}'
+            choices.append((value, value))
+    return choices
 
 
 class LoginForm(forms.Form):
@@ -19,13 +48,16 @@ class CourseForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['professor'].queryset = User.objects.filter(role='professor')
+        self.fields['semester'] = forms.ChoiceField(choices=get_semester_choices())
+        self.fields['department'] = forms.ChoiceField(choices=DEPARTMENT_CHOICES)
 
 
 class ExamForm(forms.ModelForm):
     class Meta:
         model = Exam
-        fields = ['name', 'query_window_start', 'query_window_end']
+        fields = ['name', 'max_marks', 'query_window_start', 'query_window_end']
         widgets = {
+            'max_marks': forms.NumberInput(attrs={'step': '0.01', 'min': '0.01'}),
             'query_window_start': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
             'query_window_end': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
         }
@@ -82,9 +114,17 @@ class FacultyAdvisorForm(forms.Form):
 
 
 class AdminAddFacultyForm(forms.ModelForm):
+    department = forms.ChoiceField(choices=DEPARTMENT_CHOICES)
+
     class Meta:
         model = User
         fields = ['username', 'first_name', 'last_name', 'email', 'department', 'faculty_id']
+
+    def clean_email(self):
+        email = (self.cleaned_data.get('email') or '').strip().lower()
+        if not email.endswith('@iitg.ac.in'):
+            raise forms.ValidationError('Email must end with @iitg.ac.in')
+        return email
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -100,6 +140,7 @@ class AdminAddFacultyForm(forms.ModelForm):
 
 
 class AdminAddStudentForm(forms.ModelForm):
+    department = forms.ChoiceField(choices=DEPARTMENT_CHOICES)
     faculty_advisor = forms.ModelChoiceField(
         queryset=User.objects.filter(role='professor'),
         required=True,
@@ -109,6 +150,12 @@ class AdminAddStudentForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ['username', 'first_name', 'last_name', 'email', 'department', 'roll_number']
+
+    def clean_email(self):
+        email = (self.cleaned_data.get('email') or '').strip().lower()
+        if not email.endswith('@iitg.ac.in'):
+            raise forms.ValidationError('Email must end with @iitg.ac.in')
+        return email
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -122,7 +169,7 @@ class AdminAddStudentForm(forms.ModelForm):
             advisor = self.cleaned_data.get('faculty_advisor')
             if advisor:
                 from .models import FacultyAdvisor
-                FacultyAdvisor.objects.create(student=user, advisor=advisor)
+                FacultyAdvisor.objects.update_or_create(student=user, defaults={'advisor': advisor})
         return user
 
 

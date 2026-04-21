@@ -3,6 +3,23 @@
 {% block content %}
 <div class="card">
     <h2>Available Courses ({{ current_semester }})</h2>
+    <form method="get" class="mb-8">
+        <div class="form-row">
+            <div>
+                <label for="course-search">Search by course code, course name, or professor</label>
+                <input id="course-search" type="text" name="q" value="{{ search_query }}" list="course-suggestions" placeholder="Example: CS101 or Prof Sharma">
+                <datalist id="course-suggestions">
+                    {% for suggestion in course_search_suggestions %}
+                    <option value="{{ suggestion }}"></option>
+                    {% endfor %}
+                </datalist>
+            </div>
+            <div style="max-width: 180px;">
+                <button type="submit" class="btn btn-primary">Search</button>
+            </div>
+        </div>
+    </form>
+
     {% if available_courses %}
     <table>
         <tr><th>Code</th><th>Course</th><th>Professor</th><th>Action</th></tr>
@@ -10,9 +27,14 @@
         <tr>
             <td>{{ course.code }}</td>
             <td>{{ course.name }}</td>
-            <td>{{ course.professor.username }}</td>
             <td>
-                <form method="post" style="display:inline;">
+                {{ course.professor.username }}
+                {% if course.professor.first_name or course.professor.last_name %}
+                ({{ course.professor.first_name }} {{ course.professor.last_name }})
+                {% endif %}
+            </td>
+            <td>
+                <form method="post" class="enroll-form" style="display:inline;">
                     {% csrf_token %}
                     <input type="hidden" name="course_id" value="{{ course.id }}">
                     <button type="submit" class="btn btn-primary btn-sm">Request Enrollment</button>
@@ -22,7 +44,13 @@
         {% endfor %}
     </table>
     {% else %}
-    <p class="empty">No available courses for this semester</p>
+    <p class="empty">
+        {% if search_query %}
+        No courses match "{{ search_query }}".
+        {% else %}
+        No available courses for this semester.
+        {% endif %}
+    </p>
     {% endif %}
 </div>
 
@@ -42,4 +70,30 @@
 {% endif %}
 
 <a href="{% url 'student_dashboard' %}" class="btn btn-secondary">← Back to Dashboard</a>
+
+<script>
+document.querySelectorAll('.enroll-form').forEach(form => {
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        const formData = new FormData(form);
+        const csrfToken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+        const response = await fetch(window.location.pathname, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+        });
+
+        if (response.redirected) {
+            window.location.href = response.url;
+        } else {
+            window.location.reload();
+        }
+    });
+});
+</script>
 {% endblock %}

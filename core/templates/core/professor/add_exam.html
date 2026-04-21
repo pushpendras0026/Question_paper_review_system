@@ -7,6 +7,12 @@
         {% csrf_token %}
         <label for="id_name">Exam Name</label>
         {{ form.name }}
+        <label for="id_max_marks">Maximum Marks</label>
+        {{ form.max_marks }}
+        <label for="id_query_window_start">Query Window Start</label>
+        {{ form.query_window_start }}
+        <label for="id_query_window_end">Query Window End</label>
+        {{ form.query_window_end }}
         <button type="submit" class="btn btn-primary mt-8">Add Exam</button>
     </form>
 </div>

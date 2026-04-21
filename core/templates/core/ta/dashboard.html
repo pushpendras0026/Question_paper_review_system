@@ -20,7 +20,7 @@
     <h2>Active Course Assignments</h2>
     {% if assignments %}
     <table>
-        <tr><th>Course</th><th>Semester</th><th>Upload Scripts</th><th>Resolve Queries</th><th>Update Marks</th><th>Actions</th></tr>
+        <tr><th>Course</th><th>Semester</th><th>Upload Scripts</th><th>Resolve Queries</th><th>Update Marks</th><th>Quick Actions</th><th>Details</th></tr>
         {% for a in assignments %}
         <tr>
             <td>{{ a.course.code }} — {{ a.course.name }}</td>
@@ -28,6 +28,20 @@
             <td>{% if a.can_upload_scripts %}✓{% else %}✗{% endif %}</td>
             <td>{% if a.can_resolve_queries %}✓{% else %}✗{% endif %}</td>
             <td>{% if a.can_update_marks %}✓{% else %}✗{% endif %}</td>
+            <td>
+                {% if a.first_exam and a.can_upload_scripts %}
+                <a href="{% url 'ta_upload_scripts' a.id a.first_exam.id %}" class="btn btn-primary btn-sm">Upload</a>
+                {% endif %}
+                {% if a.first_exam and a.can_update_marks %}
+                <a href="{% url 'ta_update_marks' a.id a.first_exam.id %}" class="btn btn-primary btn-sm">Marks</a>
+                {% endif %}
+                {% if a.can_resolve_queries %}
+                <a href="{% url 'ta_view_queries' a.id %}" class="btn btn-secondary btn-sm">Queries</a>
+                {% endif %}
+                {% if not a.can_upload_scripts and not a.can_update_marks and not a.can_resolve_queries %}
+                <span class="text-sm text-muted">No actions granted</span>
+                {% endif %}
+            </td>
             <td><a href="{% url 'ta_course_detail' a.id %}" class="btn btn-primary btn-sm">View</a></td>
         </tr>
         {% endfor %}
