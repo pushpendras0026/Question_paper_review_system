@@ -67,6 +67,7 @@ class Enrollment(models.Model):
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='enrollments')
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrollments')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending_professor')
+    grade = models.CharField(max_length=5, null=True, blank=True)
     rejection_reason = models.TextField(null=True, blank=True)
 
     class Meta:

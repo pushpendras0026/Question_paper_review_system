@@ -33,6 +33,7 @@ urlpatterns = [
     path('professor/course/<int:course_id>/completed/', views.professor_completed_course, name='professor_completed_course'),
     path('professor/course/<int:course_id>/queries/', views.professor_view_queries, name='professor_view_queries'),
     path('professor/query/<int:query_id>/respond/', views.professor_respond_query, name='professor_respond_query'),
+    path('professor/course/<int:course_id>/assign-grades/', views.professor_assign_grades, name='professor_assign_grades'),
 
     # Admin URLs
     path('app-admin/', views.admin_dashboard, name='admin_dashboard'),

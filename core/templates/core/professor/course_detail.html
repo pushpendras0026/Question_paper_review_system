@@ -52,6 +52,7 @@
 <div class="card">
     <h2>Other Actions</h2>
         <a href="{% url 'professor_view_queries' course.id %}" class="btn btn-primary btn-sm">View Queries</a>
+        <a href="{% url 'professor_assign_grades' course.id %}" class="btn btn-primary btn-sm">Assign Grades</a>
 </div>
 
 <a href="{% url 'professor_dashboard' %}" class="btn btn-secondary">← Back to Dashboard</a>

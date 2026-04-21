@@ -732,6 +732,27 @@ def professor_respond_query(request, query_id):
     })
 
 
+@login_required
+@role_required('professor')
+def professor_assign_grades(request, course_id):
+    course = get_object_or_404(Course, id=course_id, professor=request.user, is_active=True)
+    enrollments = Enrollment.objects.filter(course=course, status='approved').select_related('student')
+    
+    if request.method == 'POST':
+        for enrollment in enrollments:
+            grade_val = request.POST.get(f'grade_{enrollment.id}')
+            if grade_val:
+                enrollment.grade = grade_val
+                enrollment.save()
+        messages.success(request, 'Grades saved successfully.')
+        return redirect('professor_course_detail', course_id=course.id)
+        
+    return render(request, 'core/professor/assign_grades.html', {
+        'course': course,
+        'enrollments': enrollments,
+    })
+
+
 # ==================== ADMIN VIEWS ====================
 
 @login_required
@@ -760,10 +781,16 @@ def admin_create_course(request):
 @role_required('admin')
 def admin_end_course(request, course_id):
     course = get_object_or_404(Course, id=course_id, is_active=True)
+    
+    ungraded = Enrollment.objects.filter(course=course, status='approved', grade__isnull=True)
+    if ungraded.exists():
+        messages.error(request, 'Cannot end course: Not all approved students have been assigned a grade.')
+        return redirect('admin_manage_courses')
+        
     course.is_active = False
     course.save()
     messages.success(request, f'Course {course.code} ended.')
-    return redirect('admin_dashboard')
+    return redirect('admin_manage_courses')
 
 
 

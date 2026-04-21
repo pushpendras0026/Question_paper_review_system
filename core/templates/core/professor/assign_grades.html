@@ -1,0 +1,38 @@
+{% extends "core/base.html" %}
+{% block title %}Assign Grades - {{ course.code }}{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Assign Grades for {{ course.code }} — {{ course.name }}</h2>
+    
+    {% if enrollments %}
+    <form method="post">
+        {% csrf_token %}
+        <table>
+            <tr>
+                <th>Student</th>
+                <th>Roll Number</th>
+                <th>Current Grade</th>
+                <th>New Grade</th>
+            </tr>
+            {% for enrollment in enrollments %}
+            <tr>
+                <td>{{ enrollment.student.get_full_name|default:enrollment.student.username }}</td>
+                <td>{{ enrollment.student.roll_number|default:"-" }}</td>
+                <td>{{ enrollment.grade|default:"-" }}</td>
+                <td>
+                    <input type="text" name="grade_{{ enrollment.id }}" value="{{ enrollment.grade|default:'' }}" maxlength="5" class="form-control" style="width: 80px;" placeholder="e.g. A">
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        <div style="margin-top: 20px;">
+            <button type="submit" class="btn btn-primary">Save Grades</button>
+            <a href="{% url 'professor_course_detail' course.id %}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+    {% else %}
+    <p class="empty">No approved students enrolled in this course.</p>
+    <a href="{% url 'professor_course_detail' course.id %}" class="btn btn-secondary">← Back to Course</a>
+    {% endif %}
+</div>
+{% endblock %}
