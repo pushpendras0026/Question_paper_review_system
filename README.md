@@ -116,7 +116,7 @@ source venv/bin/activate
 python manage.py runserver
 ```
 
-### Step 4 — Open your browser
+### Step 4 — Open your browser and paste the link
 
 ```
 http://127.0.0.1:8000/
