@@ -83,9 +83,14 @@
     {% endif %}
 
     <div class="container">
-        <div style="margin-bottom: 16px;">
+
+{% block back_button %}
+         <div style="margin-bottom: 16px;">
             <button onclick="return handleBackClick();" class="btn btn-secondary btn-sm">❮ Back</button>
         </div>
+        {% endblock %}
+
+       
         {% if messages %}
         <ul class="messages">
             {% for message in messages %}
@@ -99,16 +104,11 @@
 
     <script>
         function handleBackClick() {
-            const shouldLogout = confirm('Do you want to logout from this session?');
-            if (shouldLogout) {
-                const logoutForm = document.getElementById('logout-form');
-                if (logoutForm) {
-                    logoutForm.submit();
-                } else {
-                    window.location.href = '/';
-                }
+            if (document.referrer !== "") {
+                window.history.back();
+            } else {
+                window.location.href = "/"; // fallback page (home)
             }
-            return false;
         }
     </script>
 </body>
