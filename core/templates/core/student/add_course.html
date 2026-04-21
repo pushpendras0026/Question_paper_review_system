@@ -7,7 +7,7 @@
         <div class="form-row">
             <div>
                 <label for="course-search">Search by course code, course name, or professor</label>
-                <input id="course-search" type="text" name="q" value="{{ search_query }}" list="course-suggestions" placeholder="Example: CS101 or Prof Sharma">
+                <input id="course-search" type="text" autocomplete="off" name="q" value="{{ search_query }}" list="course-suggestions" placeholder="Example: CS101">
                 <datalist id="course-suggestions">
                     {% for suggestion in course_search_suggestions %}
                     <option value="{{ suggestion }}"></option>

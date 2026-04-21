@@ -21,17 +21,22 @@
     <h2>Find Courses</h2>
     <form method="get">
         <input type="hidden" name="request_q" value="{{ request_search_query }}">
+        <div>
+
+                               <label for="course-search">Search by code, name, or semester</label>
+                           </div>
         <div class="form-row">
+                           
+
             <div>
-                <label for="course-search">Search by code, name, or semester</label>
-                <input id="course-search" type="text" name="q" value="{{ search_query }}" list="prof-course-suggestions" placeholder="Example: CS101 or Fall 2026">
+                <input id="course-search" type="text" autocomplete="off" name="q" value="{{ search_query }}" list="prof-course-suggestions" placeholder="Example: CS101 or Fall 2026">
                 <datalist id="prof-course-suggestions">
                     {% for suggestion in course_search_suggestions %}
                     <option value="{{ suggestion }}"></option>
                     {% endfor %}
                 </datalist>
             </div>
-            <div style="max-width: 180px;">
+            <div style="max-width: 180px;margin:auto;">
                 <button type="submit" class="btn btn-primary">Search</button>
             </div>
         </div>
@@ -80,12 +85,13 @@
     <h2>Pending Approval Requests</h2>
     <form method="get" class="mb-8">
         <input type="hidden" name="q" value="{{ search_query }}">
+        <label for="request-search">Search pending requests by student or course</label>
         <div class="form-row">
             <div>
-                <label for="request-search">Search pending requests by student or course</label>
+                
                 <input id="request-search" type="text" name="request_q" value="{{ request_search_query }}" placeholder="Student username/roll or course code/name">
             </div>
-            <div style="max-width: 180px;">
+            <div style="max-width: 180px;margin:auto;">
                 <button type="submit" class="btn btn-primary">Search Requests</button>
             </div>
         </div>
@@ -97,12 +103,14 @@
         {% csrf_token %}
         <input type="hidden" name="type" value="professor">
         <input type="hidden" name="next" value="dashboard">
-        <div class="form-row">
-            <div>
                 <label for="prof-reason">Common rejection reason (required for Reject)</label>
+
+        <div class="form-row">
+            
+            <div>
                 <input id="prof-reason" type="text" name="reason" placeholder="Reason for bulk reject">
             </div>
-            <div style="max-width: 320px; display:flex; gap:8px;">
+            <div style="max-width: 320px; display:flex; gap:8px;margin:auto;">
                 <button type="submit" name="action" value="approve" class="btn btn-success" onclick="return validateBulk('prof', 'approve');">Approve Selected</button>
                 <button type="submit" name="action" value="reject" class="btn btn-danger" onclick="return validateBulk('prof', 'reject');">Reject Selected</button>
             </div>
@@ -130,12 +138,13 @@
         {% csrf_token %}
         <input type="hidden" name="type" value="advisor">
         <input type="hidden" name="next" value="dashboard">
+                        <label for="advisor-reason">Common rejection reason (required for Reject)</label>
+
         <div class="form-row">
             <div>
-                <label for="advisor-reason">Common rejection reason (required for Reject)</label>
                 <input id="advisor-reason" type="text" name="reason" placeholder="Reason for bulk reject">
             </div>
-            <div style="max-width: 320px; display:flex; gap:8px;">
+            <div style="max-width: 320px; display:flex; gap:8px;margin:auto;">
                 <button type="submit" name="action" value="approve" class="btn btn-success" onclick="return validateBulk('advisor', 'approve');">Approve Selected</button>
                 <button type="submit" name="action" value="reject" class="btn btn-danger" onclick="return validateBulk('advisor', 'reject');">Reject Selected</button>
             </div>
@@ -149,7 +158,7 @@
                 <td>{{ e.course.code }} — {{ e.course.name }}</td>
                 <td>
                     <a href="{% url 'professor_approve_enrollment' e.id %}?type=advisor&next=dashboard" class="btn btn-success btn-sm">Approve</a>
-                    <span class="text-sm text-muted">Use checkbox + Reject Selected</span>
+                    <!-- <span class="text-sm text-muted">Use checkbox + Reject Selected</span> -->
                 </td>
             </tr>
             {% endfor %}

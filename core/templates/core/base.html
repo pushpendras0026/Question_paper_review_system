@@ -16,7 +16,7 @@
         }
 
         body {
-            font-family: 'Google Sans', sans-serif;
+            font-family: 'Google Sans', sans-serif !important;
 
             background: #efefef;
             color: #333;
@@ -203,7 +203,7 @@
             border: 1px solid #ccc;
             border-radius: 4px;
             font-size: 14px;
-            margin-bottom: 8px;
+            /* margin-bottom: 8px; */
         }
 
         label {
@@ -363,7 +363,7 @@
 
 {% block back_button %}
          <div style="margin-bottom: 16px;">
-            <button onclick="return handleBackClick();" class="btn btn-secondary btn-sm">❮ Back</button>
+            <button onclick="return handleBackClick();" class="btn btn-secondary btn-sm" style="background:none;font-weight: bold;color:black;">❮ Back</button>
         </div>
         {% endblock %}
 
