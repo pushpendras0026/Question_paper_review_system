@@ -85,7 +85,7 @@ class QueryForm(forms.ModelForm):
         model = Query
         fields = ['text']
         widgets = {
-            'text': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Describe your query...'}),
+            'text': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Describe your query'}),
         }
 
 

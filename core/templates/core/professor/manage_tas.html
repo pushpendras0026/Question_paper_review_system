@@ -50,7 +50,7 @@
                 </form>
                 <form action="{% url 'professor_remove_ta' course.id ta.id %}" method="post" style="display:inline; margin:0;" onsubmit="return confirm('Are you sure you want to remove this TA?');">
                     {% csrf_token %}
-                    <input type="text" name="reason" placeholder="Reason for removal..." required style="width:140px; display:inline-block; margin-bottom:0;" class="text-sm">
+                    <input type="text" name="reason" placeholder="Reason for removal" required style="width:140px; display:inline-block; margin-bottom:0;" class="text-sm">
                     <button type="submit" class="btn btn-danger btn-sm">Remove</button>
                 </form>
             </td>

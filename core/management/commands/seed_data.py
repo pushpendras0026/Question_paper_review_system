@@ -6,7 +6,7 @@ class Command(BaseCommand):
     help = 'Seed the database with sample data for testing'
 
     def handle(self, *args, **options):
-        self.stdout.write('Creating users...')
+        self.stdout.write('Creating users')
 
         # Common password
         password = 'pass'
@@ -47,7 +47,7 @@ class Command(BaseCommand):
             tas.append(ta)
         ta1, ta2 = tas
 
-        self.stdout.write('Creating courses...')
+        self.stdout.write('Creating courses')
 
         # Active courses (Spring 2026 = current semester)
         cs101 = Course.objects.create(
@@ -64,7 +64,7 @@ class Command(BaseCommand):
             semester='Fall 2025', professor=prof1, created_by=admin, is_active=False
         )
 
-        self.stdout.write('Setting up enrollments...')
+        self.stdout.write('Setting up enrollments')
 
         # Active enrollments
         Enrollment.objects.create(student=stud1, course=cs101, status='approved')
@@ -82,19 +82,19 @@ class Command(BaseCommand):
         # Pending enrollment
         Enrollment.objects.create(student=stud3, course=cs101, status='pending_professor')
 
-        self.stdout.write('Setting up faculty advisors...')
+        self.stdout.write('Setting up faculty advisors')
         FacultyAdvisor.objects.create(student=stud1, advisor=prof1)
         FacultyAdvisor.objects.create(student=stud2, advisor=prof2)
         FacultyAdvisor.objects.create(student=stud3, advisor=prof1)
         FacultyAdvisor.objects.create(student=stud4, advisor=prof3)
         FacultyAdvisor.objects.create(student=stud5, advisor=prof2)
 
-        self.stdout.write('Creating exams...')
+        self.stdout.write('Creating exams')
         exam1 = Exam.objects.create(course=cs101, name='Midterm 1')
         exam2 = Exam.objects.create(course=cs101, name='Final Exam')
         Exam.objects.create(course=cs100, name='Midterm')
 
-        self.stdout.write('Setting up TA assignment...')
+        self.stdout.write('Setting up TA assignment')
         TAAssignment.objects.create(
             ta=ta1, course=cs101,
             can_upload_scripts=True, can_resolve_queries=True,
