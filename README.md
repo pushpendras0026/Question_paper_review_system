@@ -84,15 +84,13 @@ python manage.py migrate
 
 ### 7. Create Test Users
 
-To create test accounts easily, you can use our built-in dummy data script (if available). Check if `populate_dummy_data` or `seed_data` exists:
+To create test accounts easily, you can use our built-in sample data. Check if `seed_data.py` file exists and run:
 
 ```bash
 python manage.py seed_data
-# OR
-python manage.py populate_dummy_data
 ```
 
-*(You can also use `python manage.py createsuperuser` to manually create your own superadmin)*
+*(You can also use `python manage.py createsuperuser` to manually create your own superadmin in django way)*
 
 ---
 
