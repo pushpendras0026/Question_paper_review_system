@@ -4,18 +4,7 @@
 <!-- empty = no back button -->
 {% endblock %}
 {% block content %}
-<div class="card">
-    <h2>Inbox & Notifications</h2>
-    {% if notifications %}
-    <ul class="messages">
-        {% for notif in notifications %}
-        <li class="warning"><strong>[{{ notif.created_at|date:"M d, H:i" }}]</strong> {{ notif.message }}</li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <p class="empty">No new notifications.</p>
-    {% endif %}
-</div>
+
 
 <div class="card">
     <h2>Find Courses</h2>
@@ -169,8 +158,6 @@
     {% if not prof_requests and not advisor_requests %}
     <p class="empty">No pending requests</p>
     {% endif %}
-
-    <a href="{% url 'professor_approve_requests' %}" class="btn btn-primary btn-sm mt-8">View All Requests</a>
 </div>
 
 <script>

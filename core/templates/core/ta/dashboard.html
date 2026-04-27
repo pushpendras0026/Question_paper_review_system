@@ -4,20 +4,6 @@
 <!-- empty = no back button -->
 {% endblock %}
 {% block content %}
-<div class="card">
-    <h2>Inbox & Notifications</h2>
-    {% if user.notifications.all %}
-    <ul class="messages">
-        {% for notif in user.notifications.all %}
-        <li class="warning" style="margin-bottom: 4px;">
-            <strong>[{{ notif.created_at|date:"M d, H:i" }}]</strong> {{ notif.message }}
-        </li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <p class="empty text-sm">No new notifications.</p>
-    {% endif %}
-</div>
 
 <div class="card">
     <h2>Active Course Assignments</h2>

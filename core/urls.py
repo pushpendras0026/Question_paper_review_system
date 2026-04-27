@@ -7,6 +7,8 @@ urlpatterns = [
     path('', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('change-password/', views.change_password, name='change_password'),
+    path('notifications/mark-read/<int:notif_id>/', views.mark_notification_read, name='mark_notification_read'),
+    path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
 
     # Student URLs
     path('student/', views.student_dashboard, name='student_dashboard'),
@@ -26,7 +28,6 @@ urlpatterns = [
     path('professor/exam/<int:exam_id>/upload-scripts/', views.professor_upload_scripts, name='professor_upload_scripts'),
     path('professor/exam/<int:exam_id>/marks/', views.professor_enter_marks, name='professor_enter_marks'),
     path('professor/exam/<int:exam_id>/upload-csv/', views.professor_upload_csv_marks, name='professor_upload_csv_marks'),
-    path('professor/approve-requests/', views.professor_approve_requests, name='professor_approve_requests'),
     path('professor/enrollment/<int:enrollment_id>/approve/', views.professor_approve_enrollment, name='professor_approve_enrollment'),
     path('professor/enrollment/<int:enrollment_id>/reject/', views.professor_reject_enrollment, name='professor_reject_enrollment'),
     path('professor/bulk-action/', views.professor_bulk_enrollment_action, name='professor_bulk_enrollment_action'),

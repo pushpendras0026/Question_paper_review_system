@@ -338,6 +338,103 @@
         .text-muted {
             color: #999;
         }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            color: #333;
+        }
+        .modal-header {
+            padding: 16px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8f9fa;
+        }
+        .modal-header h2 {
+            margin: 0;
+            font-size: 16px;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #aaa;
+        }
+        .modal-close:hover {
+            color: #333;
+        }
+        .modal-body {
+            padding: 16px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .notif-item {
+            padding: 12px;
+            border-bottom: 1px solid #f1f1f1;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .notif-item:last-child {
+            border-bottom: none;
+        }
+        .notif-content {
+            flex: 1;
+            margin-right: 12px;
+            font-size: 13px;
+        }
+        .notif-time {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 4px;
+            display: block;
+        }
+        .notif-unread {
+            background: #f0f7ff;
+            border-left: 3px solid #3498db;
+        }
+        .mark-read-btn {
+            white-space: nowrap;
+            background: transparent;
+            color: #3498db;
+            border: 1px solid #3498db;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 11px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .mark-read-btn:hover {
+            background: #3498db;
+            color: white;
+        }
+        .notif-badge {
+            background: #e74c3c;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 6px;
+            font-size: 11px;
+            margin-left: 4px;
+        }
     </style>
 </head>
 <body>
@@ -348,6 +445,12 @@
         </h1>
         <div style="display: flex; align-items: center; gap: 16px;">
 
+            <button type="button" class="nav-link-btn" onclick="document.getElementById('notifications-modal').style.display='flex'">
+                Notifications
+                {% if unread_notifications %}
+                <span class="notif-badge">{{ unread_notifications|length }}</span>
+                {% endif %}
+            </button>
             <span class="text-sm">{{ user.username }}</span>
             <a href="{% url 'change_password' %}" class="text-sm">Change Password</a>
             <form method="post" action="{% url 'logout' %}" class="nav-inline-form" id="logout-form">
@@ -387,6 +490,47 @@
                 window.location.href = "/"; // fallback page (home)
             }
         }
+        
+        window.onclick = function(event) {
+            var modal = document.getElementById('notifications-modal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
     </script>
+
+    <!-- Notifications Modal -->
+    {% if user.is_authenticated %}
+    <div id="notifications-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Inbox & Notifications</h2>
+                <div>
+                    {% if unread_notifications %}
+                    <a href="{% url 'mark_all_notifications_read' %}" class="btn btn-secondary btn-sm" style="margin-right: 8px;">Mark all as read</a>
+                    {% endif %}
+                    <button class="modal-close" onclick="document.getElementById('notifications-modal').style.display='none'">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                {% if all_notifications %}
+                    {% for notif in all_notifications %}
+                    <div class="notif-item {% if not notif.is_read %}notif-unread{% endif %}">
+                        <div class="notif-content">
+                            <span class="notif-time">{{ notif.created_at|date:"M d, Y H:i" }}</span>
+                            {{ notif.message }}
+                        </div>
+                        {% if not notif.is_read %}
+                        <a href="{% url 'mark_notification_read' notif.id %}" class="mark-read-btn">Mark Read</a>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="empty text-sm" style="text-align:center; padding:20px; color:#777;">No new notifications to display.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </body>
 </html>

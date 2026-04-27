@@ -108,10 +108,7 @@ def _extract_decimal_from_cell(value):
 
 
 def _redirect_professor_request_page(request):
-    next_page = (request.POST.get('next') or request.GET.get('next') or '').strip()
-    if next_page == 'dashboard':
-        return redirect('professor_dashboard')
-    return redirect('professor_approve_requests')
+    return redirect('professor_dashboard')
 
 
 def _permission_summary(assignment):
@@ -801,43 +798,6 @@ def professor_upload_csv_marks(request, exam_id):
 
 @login_required
 @role_required('professor')
-def professor_approve_requests(request):
-    prof_requests_qs = Enrollment.objects.filter(
-        course__professor=request.user, status='pending_professor'
-    ).select_related('student', 'course').order_by('course__department', 'course__semester', 'course__code')
-
-    advisor_requests_qs = Enrollment.objects.filter(
-        student__faculty_advisor__advisor=request.user, status='pending_advisor'
-    ).select_related('student', 'course').order_by('course__department', 'course__semester', 'course__code')
-
-    # Group prof_requests by department → semester → course
-    prof_groups = {}
-    for e in prof_requests_qs:
-        dept = e.course.department or 'Unknown'
-        sem = e.course.semester
-        ckey = e.course.code
-        prof_groups.setdefault(dept, {}).setdefault(sem, {}).setdefault(ckey, {'course': e.course, 'enrollments': []})
-        prof_groups[dept][sem][ckey]['enrollments'].append(e)
-
-    # Group advisor_requests by department → semester → course
-    advisor_groups = {}
-    for e in advisor_requests_qs:
-        dept = e.course.department or 'Unknown'
-        sem = e.course.semester
-        ckey = e.course.code
-        advisor_groups.setdefault(dept, {}).setdefault(sem, {}).setdefault(ckey, {'course': e.course, 'enrollments': []})
-        advisor_groups[dept][sem][ckey]['enrollments'].append(e)
-
-    return render(request, 'core/professor/approve_requests.html', {
-        'prof_groups': prof_groups,
-        'advisor_groups': advisor_groups,
-        'total_prof': prof_requests_qs.count(),
-        'total_advisor': advisor_requests_qs.count(),
-    })
-
-
-@login_required
-@role_required('professor')
 def professor_approve_enrollment(request, enrollment_id):
     enrollment = get_object_or_404(Enrollment, id=enrollment_id)
     approval_type = request.GET.get('type', 'professor')
@@ -1512,3 +1472,18 @@ def _get_current_semester():
         return f"Summer {now.year}"
     else:
         return f"Fall {now.year}"
+@login_required
+def mark_notification_read(request, notif_id):
+    from .models import Notification
+    notification = get_object_or_404(Notification, id=notif_id, user=request.user)
+    notification.is_read = True
+    notification.save()
+    next_url = request.GET.get('next') or request.META.get('HTTP_REFERER') or 'login'
+    return redirect(next_url)
+
+@login_required
+def mark_all_notifications_read(request):
+    from .models import Notification
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    next_url = request.GET.get('next') or request.META.get('HTTP_REFERER') or 'login'
+    return redirect(next_url)
