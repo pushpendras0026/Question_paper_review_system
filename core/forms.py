@@ -9,6 +9,7 @@ from .models import (
 DEPARTMENT_CHOICES = [
     ('', 'Select Department'),
     ('CSE', 'CSE'),
+    ('DSAI', 'DSAI'),
     ('ECE', 'ECE'),
     ('EEE', 'EEE'),
     ('ME', 'ME'),
