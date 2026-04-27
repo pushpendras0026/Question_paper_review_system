@@ -1,0 +1,31 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+<div class="card mb-8" style="display: flex; justify-content: space-between; align-items: center;">
+    <h2 style="border: none; margin: 0; padding: 0;">Manage Faculty</h2>
+    <a href="{% url 'admin_add_faculty' %}" class="btn btn-primary btn-sm">+ Add Faculty</a>
+</div>
+
+<div class="card">
+    <table>
+        <tr>
+            <th>Username</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Faculty ID</th>
+            <th>Department</th>
+        </tr>
+        {% for f in faculty %}
+        <tr>
+            <td>{{ f.username }}</td>
+            <td>{{ f.first_name }} {{ f.last_name }}</td>
+            <td>{{ f.email }}</td>
+            <td>{{ f.faculty_id|default:"N/A" }}</td>
+            <td>{{ f.department }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted">No faculty found.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

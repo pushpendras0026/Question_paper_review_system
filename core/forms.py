@@ -117,10 +117,11 @@ class FacultyAdvisorForm(forms.Form):
 
 class AdminAddFacultyForm(forms.ModelForm):
     department = forms.ChoiceField(choices=DEPARTMENT_CHOICES)
+    password = forms.CharField(widget=forms.PasswordInput, required=True, label="Password")
 
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'email', 'department', 'faculty_id']
+        fields = ['username', 'first_name', 'last_name', 'email', 'department', 'faculty_id', 'password']
 
     def clean_email(self):
         email = (self.cleaned_data.get('email') or '').strip().lower()
@@ -131,11 +132,7 @@ class AdminAddFacultyForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.role = 'professor'
-        # Default password is the faculty_id
-        if user.faculty_id:
-            user.set_password(user.faculty_id)
-        else:
-            user.set_password('password123!')
+        user.set_password(self.cleaned_data['password'])
         if commit:
             user.save()
         return user
@@ -177,10 +174,11 @@ class AdminAddStudentForm(forms.ModelForm):
 
 class AdminAddTAForm(forms.ModelForm):
     department = forms.ChoiceField(choices=DEPARTMENT_CHOICES)
+    password = forms.CharField(widget=forms.PasswordInput, required=True, label="Password")
 
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'last_name', 'email', 'department', 'roll_number']
+        fields = ['username', 'first_name', 'last_name', 'email', 'department', 'roll_number', 'password']
 
     def clean_email(self):
         email = (self.cleaned_data.get('email') or '').strip().lower()
@@ -191,10 +189,40 @@ class AdminAddTAForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.role = 'ta'
-        if user.roll_number:
-            user.set_password(user.roll_number)
-        else:
-            user.set_password('password')
+        user.set_password(self.cleaned_data['password'])
+        if commit:
+            user.save()
+        return user
+
+
+class StudentSignupForm(forms.ModelForm):
+    department = forms.ChoiceField(choices=DEPARTMENT_CHOICES)
+    password = forms.CharField(widget=forms.PasswordInput, required=True, label="Password")
+
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'last_name', 'email', 'department', 'roll_number', 'password']
+
+    def clean_email(self):
+        email = (self.cleaned_data.get('email') or '').strip().lower()
+        if not email.endswith('@iitg.ac.in'):
+            raise forms.ValidationError('Email must end with @iitg.ac.in')
+        # Check if email is already taken
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError('Email is already registered')
+        return email
+
+    def clean_roll_number(self):
+        roll = self.cleaned_data.get('roll_number')
+        if User.objects.filter(roll_number=roll).exists():
+            raise forms.ValidationError('Roll number is already registered')
+        return roll
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.role = 'student'
+        user.is_active = False  # Needs admin approval
+        user.set_password(self.cleaned_data['password'])
         if commit:
             user.save()
         return user

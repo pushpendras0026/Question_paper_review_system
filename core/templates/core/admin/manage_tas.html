@@ -1,0 +1,31 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+<div class="card mb-8" style="display: flex; justify-content: space-between; align-items: center;">
+    <h2 style="border: none; margin: 0; padding: 0;">Manage Teaching Assistants</h2>
+    <a href="{% url 'admin_add_ta' %}" class="btn btn-primary btn-sm">+ Add TA</a>
+</div>
+
+<div class="card">
+    <table>
+        <tr>
+            <th>Username</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Roll Number</th>
+            <th>Department</th>
+        </tr>
+        {% for ta in tas %}
+        <tr>
+            <td>{{ ta.username }}</td>
+            <td>{{ ta.first_name }} {{ ta.last_name }}</td>
+            <td>{{ ta.email }}</td>
+            <td>{{ ta.roll_number|default:"N/A" }}</td>
+            <td>{{ ta.department }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted">No Teaching Assistants found.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

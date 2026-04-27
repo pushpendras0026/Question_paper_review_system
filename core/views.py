@@ -22,7 +22,7 @@ from .forms import (
     LoginForm, CourseForm, ExamForm, ExamSectionForm, AnswerScriptUploadForm,
     MarkForm, QueryForm, QueryResponseForm, TAAssignmentForm,
     FacultyAdvisorForm, AdminAddFacultyForm, AdminAddStudentForm, AdminAddTAForm,
-    AdminForceEnrollForm
+    AdminForceEnrollForm, StudentSignupForm
 )
 
 
@@ -259,15 +259,39 @@ def login_view(request):
             username = form.cleaned_data['username']
             password = form.cleaned_data['password']
             role = form.cleaned_data['role']
+            
+            # Check user existence and active status first for better error messages
+            try:
+                user_obj = User.objects.get(username=username)
+                if not user_obj.is_active:
+                    messages.error(request, 'Your profile is pending admin approval.')
+                    return render(request, 'core/login.html', {'form': form})
+            except User.DoesNotExist:
+                pass
+
             user = authenticate(request, username=username, password=password)
-            if user is not None and (user.role == role or (user.is_superuser and role == 'admin')):
-                login(request, user)
-                return redirect(f'{role}_dashboard')
+            if user is not None:
+                if user.role == role or (user.is_superuser and role == 'admin'):
+                    login(request, user)
+                    return redirect(f'{role}_dashboard')
+                else:
+                    messages.error(request, 'Invalid credentials or role mismatch.')
             else:
-                messages.error(request, 'Invalid credentials or role mismatch.')
+                messages.error(request, 'Invalid credentials or account does not exist.')
     else:
         form = LoginForm()
     return render(request, 'core/login.html', {'form': form})
+
+def student_signup_view(request):
+    if request.method == 'POST':
+        form = StudentSignupForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Signup successful! Your profile is pending administrative approval.')
+            return redirect('login')
+    else:
+        form = StudentSignupForm()
+    return render(request, 'core/student_signup.html', {'form': form})
 
 
 def logout_view(request):
@@ -1140,7 +1164,7 @@ def admin_add_faculty(request):
         if form.is_valid():
             user = form.save()
             messages.success(request, f'Faculty {user.username} created successfully.')
-            return redirect('admin_dashboard')
+            return redirect('admin_manage_faculty')
     else:
         form = AdminAddFacultyForm()
     return render(request, 'core/admin/add_user.html', {'form': form, 'title': 'Add Faculty'})
@@ -1154,7 +1178,7 @@ def admin_add_student(request):
         if form.is_valid():
             user = form.save()
             messages.success(request, f'Student {user.username} created successfully.')
-            return redirect('admin_dashboard')
+            return redirect('admin_manage_students')
     else:
         form = AdminAddStudentForm()
     return render(request, 'core/admin/add_user.html', {'form': form, 'title': 'Add Student'})
@@ -1168,7 +1192,7 @@ def admin_add_ta(request):
         if form.is_valid():
             user = form.save()
             messages.success(request, f'TA {user.username} created successfully.')
-            return redirect('admin_dashboard')
+            return redirect('admin_manage_tas')
     else:
         form = AdminAddTAForm()
     return render(request, 'core/admin/add_user.html', {'form': form, 'title': 'Add TA'})
@@ -1487,3 +1511,31 @@ def mark_all_notifications_read(request):
     Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
     next_url = request.GET.get('next') or request.META.get('HTTP_REFERER') or 'login'
     return redirect(next_url)
+
+@login_required
+@role_required('admin')
+def admin_manage_students(request):
+    students = User.objects.filter(role='student').order_by('-date_joined')
+    return render(request, 'core/admin/manage_students.html', {'students': students})
+
+@login_required
+@role_required('admin')
+def admin_approve_student(request, student_id):
+    student = get_object_or_404(User, id=student_id, role='student')
+    if request.method == 'POST':
+        student.is_active = True
+        student.save()
+        messages.success(request, f'Student {student.username} approved.')
+    return redirect('admin_manage_students')
+
+@login_required
+@role_required('admin')
+def admin_manage_faculty(request):
+    faculty = User.objects.filter(role='professor').order_by('department', 'username')
+    return render(request, 'core/admin/manage_faculty.html', {'faculty': faculty})
+
+@login_required
+@role_required('admin')
+def admin_manage_tas(request):
+    tas = User.objects.filter(role='ta').order_by('department', 'username')
+    return render(request, 'core/admin/manage_tas.html', {'tas': tas})

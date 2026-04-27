@@ -1,0 +1,30 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+<div class="card" style="max-width: 500px; margin: 40px auto;">
+    <h2>Student Signup</h2>
+    <p class="text-sm text-muted" style="margin-bottom: 20px;">
+        Register your account here. An admin will approve your profile before you can log in.
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            <div style="margin-bottom: 12px;">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div style="color: #e74c3c; font-size: 12px; margin-top: 4px;">
+                    {{ field.errors.0 }}
+                </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">Sign Up</button>
+    </form>
+    
+    <div style="text-align: center; margin-top: 16px;">
+        <span class="text-sm text-muted">Already have an account? <a href="{% url 'login' %}" style="color: #3498db; text-decoration: none;">Login</a></span>
+    </div>
+</div>
+{% endblock %}

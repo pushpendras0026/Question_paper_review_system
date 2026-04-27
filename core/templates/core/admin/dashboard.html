@@ -43,18 +43,19 @@
 
 <div class="card">
     <h2>Admin Actions</h2>
-    <div>
-        <a href="{% url 'admin_create_course' %}"> Create Course</a>
-        <br>
-        <a href="{% url 'admin_manage_courses' %}">Manage Courses</a>
-        <br>
-        <a href="{% url 'admin_add_faculty' %}"> Add Faculty</a>
-        <br>
-        <a href="{% url 'admin_add_student' %}"> Add Student</a>
-        <br>
-        <a href="{% url 'admin_add_ta' %}"> Add TA</a>
-        <br>
-        <a href="{% url 'admin_ended_courses' %}">View Ended Courses</a>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div>
+            <h3>Course Management</h3>
+            <a href="{% url 'admin_create_course' %}">Create Course</a><br>
+            <a href="{% url 'admin_manage_courses' %}">Manage Active Courses</a><br>
+            <a href="{% url 'admin_ended_courses' %}">View Ended Courses</a>
+        </div>
+        <div>
+            <h3>User Management</h3>
+            <a href="{% url 'admin_manage_faculty' %}">Manage Faculty</a><br>
+            <a href="{% url 'admin_manage_tas' %}">Manage TAs</a><br>
+            <a href="{% url 'admin_manage_students' %}">Manage Students</a>
+        </div>
     </div>
 </div>
 
