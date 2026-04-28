@@ -38,7 +38,6 @@ def get_semester_choices():
 class LoginForm(forms.Form):
     username = forms.CharField(max_length=150)
     password = forms.CharField(widget=forms.PasswordInput)
-    role = forms.ChoiceField(choices=User.ROLE_CHOICES)
 
 
 class CourseForm(forms.ModelForm):

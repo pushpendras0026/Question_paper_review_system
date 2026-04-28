@@ -258,7 +258,6 @@ def login_view(request):
         if form.is_valid():
             username = form.cleaned_data['username']
             password = form.cleaned_data['password']
-            role = form.cleaned_data['role']
             
             # Check user existence and active status first for better error messages
             try:
@@ -274,11 +273,12 @@ def login_view(request):
 
             user = authenticate(request, username=username, password=password)
             if user is not None:
-                if user.role == role or (user.is_superuser and role == 'admin'):
-                    login(request, user)
+                login(request, user)
+                role = user.role if getattr(user, 'role', None) else ('admin' if user.is_superuser else None)
+                if role:
                     return redirect(f'{role}_dashboard')
                 else:
-                    messages.error(request, 'Invalid credentials or role mismatch.')
+                    return redirect('/')  # Fallback if no role could be determined
             else:
                 messages.error(request, 'Invalid credentials or account does not exist.')
     else:

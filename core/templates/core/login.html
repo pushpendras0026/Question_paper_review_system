@@ -42,36 +42,6 @@
             margin-bottom: 20px;
         }
 
-        .role-tabs {
-            display: flex;
-            gap: 0;
-            margin-bottom: 20px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .role-tab {
-            flex: 1;
-            padding: 8px 4px;
-            text-align: center;
-            font-size: 12px;
-            cursor: pointer;
-            border: none;
-            background: #f8f9fa;
-            color: #666;
-            transition: all 0.2s;
-        }
-
-        .role-tab.active {
-            background: #3498db;
-            color: white;
-        }
-
-        .role-tab:hover:not(.active) {
-            background: #e9ecef;
-        }
-
         input[type="text"],
         input[type="password"] {
             width: 100%;
@@ -122,16 +92,12 @@
             background: #f8d7da;
             color: #721c24;
         }
-
-        #role-input {
-            display: none;
-        }
     </style>
 </head>
 <body>
     <div class="login-box">
         <h1>Question Paper Review System</h1>
-        <p>Select your role and login</p>
+        <p>Login to your account</p>
 
         {% if messages %}
         <ul class="messages">
@@ -141,16 +107,8 @@
         </ul>
         {% endif %}
 
-        <div class="role-tabs">
-            <button type="button" class="role-tab active" data-role="student">Student</button>
-            <button type="button" class="role-tab" data-role="professor">Faculty</button>
-            <button type="button" class="role-tab" data-role="admin">Admin</button>
-            <button type="button" class="role-tab" data-role="ta">TA</button>
-        </div>
-
         <form method="post">
             {% csrf_token %}
-            <input type="hidden" name="role" id="role-input" value="student">
 
             <label for="username">Username</label>
             <input type="text" id="username" name="username" required>
@@ -165,15 +123,5 @@
             <span style="font-size: 13px; color: #666;">Are you a student? <a href="{% url 'student_signup' %}" style="color: #3498db; text-decoration: none;">Sign Up</a></span>
         </div>
     </div>
-
-    <script>
-        document.querySelectorAll('.role-tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                document.querySelectorAll('.role-tab').forEach(t => t.classList.remove('active'));
-                tab.classList.add('active');
-                document.getElementById('role-input').value = tab.dataset.role;
-            });
-        });
-    </script>
 </body>
 </html>
