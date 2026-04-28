@@ -7,35 +7,51 @@
         {% csrf_token %}
         <div class="form-row">
             <div>
-                <label>Student</label>
-                <select name="student_id" required>
+                <label>Single Student</label>
+                <select name="student_id">
                     <option value="">Select Student</option>
                     {% for e in enrolled_students %}
-                    <option value="{{ e.student.id }}">{{ e.student.username }} ({{ e.student.first_name }} {{ e.student.last_name }})</option>
+                    <option value="{{ e.student.id }}">{{ e.student.username }} (Roll: {{ e.student.roll_number|default:"-" }})</option>
                     {% endfor %}
                 </select>
             </div>
             <div>
-                <label>Answer Script (PDF/Image)</label>
-                <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.gif,.tif,.tiff" required>
-                <p class="text-sm text-muted">Allowed: PDF, PNG, JPG, JPEG, WEBP, BMP, GIF, TIF, TIFF</p>
+                <label>Answer Script</label>
+                <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.gif,.tif,.tiff">
             </div>
             <div>
-                <button type="submit" class="btn btn-primary">Upload</button>
+                <button type="submit" class="btn btn-primary" style="margin-top:24px;">Upload Single</button>
             </div>
         </div>
     </form>
+    
+    <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ddd;">
+        <h3>Bulk Upload (by Roll Number)</h3>
+        <p class="text-sm text-muted">Select multiple files named as the student's Roll Number (e.g., <code>12345.pdf</code>).</p>
+        <form method="post" enctype="multipart/form-data" style="margin-top: 10px;">
+            {% csrf_token %}
+            <div class="form-row" style="align-items: center;">
+                <div>
+                    <input type="file" name="files" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp,.gif,.tif,.tiff" required>
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-secondary">Upload Bulk</button>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
 
 <div class="card">
     <h2>Uploaded Scripts</h2>
     {% if existing_scripts %}
     <table>
-        <tr><th>Student</th><th>File</th><th>Uploaded At</th></tr>
+        <tr><th>Student</th><th>Roll No</th><th>File</th><th>Uploaded At</th></tr>
         {% for s in existing_scripts %}
         <tr>
             <td>{{ s.student.username }}</td>
-            <td><a href="{{ s.file.url }}" target="_blank">View</a></td>
+            <td>{{ s.student.roll_number|default:"-" }}</td>
+            <td><a href="{% url 'serve_answer_script' s.id %}" target="_blank">View</a></td>
             <td>{{ s.uploaded_at|date:"M d, Y H:i" }}</td>
         </tr>
         {% endfor %}

@@ -2,6 +2,13 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.validators import MinValueValidator
 from decimal import Decimal
+import os
+import uuid
+
+def answer_script_upload_path(instance, filename):
+    ext = os.path.splitext(filename)[1]
+    # Creates something like answer_scripts/uuid.pdf
+    return f"answer_scripts/{uuid.uuid4().hex}{ext}"
 
 
 class User(AbstractUser):
@@ -119,7 +126,7 @@ class ExamSection(models.Model):
 class AnswerScript(models.Model):
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='answer_scripts')
     student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='answer_scripts')
-    file = models.FileField(upload_to='answer_scripts/')
+    file = models.FileField(upload_to=answer_script_upload_path)
     uploaded_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, related_name='uploaded_scripts'
     )

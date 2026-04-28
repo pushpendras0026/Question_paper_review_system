@@ -6,11 +6,11 @@
 
     {% if script %}
     <h3>Your Answer Script</h3>
-    {% if '.jpg' in script.file.url.lower or '.png' in script.file.url.lower or '.jpeg' in script.file.url.lower %}
-        <img src="{{ script.file.url }}" alt="Answer Script Image" style="max-width: 100%; max-height: 800px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;">
+    {% if '.jpg' in script.file.name.lower or '.png' in script.file.name.lower or '.jpeg' in script.file.name.lower %}
+        <img src="{% url 'serve_answer_script' script.id %}" alt="Answer Script Image" style="max-width: 100%; max-height: 800px; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 15px;">
         <br>
     {% endif %}
-    <p><a href="{{ script.file.url }}" target="_blank" class="btn btn-primary btn-sm">Download Script</a></p>
+    <p><a href="{% url 'serve_answer_script' script.id %}" target="_blank" class="btn btn-primary btn-sm">View/Download Script</a></p>
 
     <h3 class="mt-16">Your Marks</h3>
     {% if marks %}

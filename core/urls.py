@@ -63,4 +63,7 @@ urlpatterns = [
     path('ta/query/<int:query_id>/respond/', views.ta_respond_query, name='ta_respond_query'),
     path('ta/course/<int:assignment_id>/marks/<int:exam_id>/', views.ta_update_marks, name='ta_update_marks'),
     path('ta/course/<int:assignment_id>/marks/<int:exam_id>/upload-csv/', views.ta_upload_csv_marks, name='ta_upload_csv_marks'),
+
+    # Secure File View
+    path('secure/script/<int:script_id>/', views.serve_answer_script, name='serve_answer_script'),
 ]

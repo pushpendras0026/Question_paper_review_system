@@ -32,7 +32,7 @@
         <tr>
             <td>{{ s.exam.name }}</td>
             <td>{{ s.student.username }}</td>
-            <td><a href="{{ s.file.url }}" target="_blank">View</a></td>
+            <td><a href="{% url 'serve_answer_script' s.id %}" target="_blank">View</a></td>
         </tr>
         {% endfor %}
     </table>

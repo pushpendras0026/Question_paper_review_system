@@ -6,6 +6,7 @@ from django.contrib import messages
 from django.db.models import Avg, Count, Q, Sum
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
+from django.http import HttpResponseForbidden, FileResponse
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 from pathlib import Path
@@ -702,25 +703,58 @@ def professor_upload_scripts(request, exam_id):
     ).select_related('student')
 
     if request.method == 'POST':
+        import os
         student_id = request.POST.get('student_id')
-        student = get_object_or_404(User, id=student_id, role='student')
-        if not Enrollment.objects.filter(course=exam.course, student=student, status='approved').exists():
-            messages.error(request, 'Selected student is not enrolled in this course.')
-            return redirect('professor_upload_scripts', exam_id=exam.id)
+        single_file = request.FILES.get('file')
+        multiple_files = request.FILES.getlist('files')
 
-        file_obj = request.FILES.get('file')
-        if file_obj:
-            if not _is_allowed_script_file(file_obj):
-                messages.error(request, 'Unsupported file format. Upload PDF, PNG, JPG, JPEG, WEBP, BMP, GIF, TIF, or TIFF.')
-                return redirect('professor_upload_scripts', exam_id=exam.id)
+        if student_id and single_file:
+            student = get_object_or_404(User, id=student_id, role='student')
+            if not Enrollment.objects.filter(course=exam.course, student=student, status='approved').exists():
+                messages.error(request, 'Selected student is not enrolled in this course.')
+            elif not _is_allowed_script_file(single_file):
+                messages.error(request, 'Unsupported file format for single upload.')
+            else:
+                AnswerScript.objects.update_or_create(
+                    exam=exam, student=student,
+                    defaults={'file': single_file, 'uploaded_by': request.user}
+                )
+                messages.success(request, f'Answer script uploaded for {student.username}.')
 
-            script, created = AnswerScript.objects.update_or_create(
-                exam=exam, student=student,
-                defaults={'file': file_obj, 'uploaded_by': request.user}
-            )
-            messages.success(request, f'Answer script uploaded for {student.username}.')
+        elif multiple_files:
+            success_count = 0
+            failed_msgs = []
+            
+            for f in multiple_files:
+                original_name = f.name
+                roll_no = os.path.splitext(original_name)[0].strip()
+                
+                if not _is_allowed_script_file(f):
+                    failed_msgs.append(f"{original_name} (Unsupported format)")
+                    continue
+                
+                student = User.objects.filter(roll_number__iexact=roll_no, role='student', status='approved').first()
+                if not student:
+                    failed_msgs.append(f"{original_name} (Roll No not found)")
+                    continue
+                    
+                if not Enrollment.objects.filter(course=exam.course, student=student, status='approved').exists():
+                    failed_msgs.append(f"{original_name} (Student not enrolled)")
+                    continue
+                
+                AnswerScript.objects.update_or_create(
+                    exam=exam, student=student,
+                    defaults={'file': f, 'uploaded_by': request.user}
+                )
+                success_count += 1
+            
+            if success_count > 0:
+                messages.success(request, f'Successfully bulk uploaded {success_count} script(s).')
+            for msg in failed_msgs:
+                messages.error(request, f'Failed file: {msg}')
         else:
-            messages.error(request, 'Please choose a file to upload.')
+            messages.error(request, 'Please provide valid inputs to upload files.')
+        
         return redirect('professor_upload_scripts', exam_id=exam.id)
 
     existing_scripts = AnswerScript.objects.filter(exam=exam).select_related('student')
@@ -1287,25 +1321,58 @@ def ta_upload_scripts(request, assignment_id, exam_id):
     ).select_related('student')
 
     if request.method == 'POST':
+        import os
         student_id = request.POST.get('student_id')
-        student = get_object_or_404(User, id=student_id, role='student')
-        if not Enrollment.objects.filter(course=assignment.course, student=student, status='approved').exists():
-            messages.error(request, 'Selected student is not enrolled in this course.')
-            return redirect('ta_upload_scripts', assignment_id=assignment.id, exam_id=exam.id)
+        single_file = request.FILES.get('file')
+        multiple_files = request.FILES.getlist('files')
 
-        file_obj = request.FILES.get('file')
-        if file_obj:
-            if not _is_allowed_script_file(file_obj):
-                messages.error(request, 'Unsupported file format. Upload PDF, PNG, JPG, JPEG, WEBP, BMP, GIF, TIF, or TIFF.')
-                return redirect('ta_upload_scripts', assignment_id=assignment.id, exam_id=exam.id)
+        if student_id and single_file:
+            student = get_object_or_404(User, id=student_id, role='student')
+            if not Enrollment.objects.filter(course=assignment.course, student=student, status='approved').exists():
+                messages.error(request, 'Selected student is not enrolled in this course.')
+            elif not _is_allowed_script_file(single_file):
+                messages.error(request, 'Unsupported file format for single upload.')
+            else:
+                AnswerScript.objects.update_or_create(
+                    exam=exam, student=student,
+                    defaults={'file': single_file, 'uploaded_by': request.user}
+                )
+                messages.success(request, f'Answer script uploaded for {student.username}.')
 
-            script, created = AnswerScript.objects.update_or_create(
-                exam=exam, student=student,
-                defaults={'file': file_obj, 'uploaded_by': request.user}
-            )
-            messages.success(request, f'Answer script uploaded for {student.username}.')
+        elif multiple_files:
+            success_count = 0
+            failed_msgs = []
+            
+            for f in multiple_files:
+                original_name = f.name
+                roll_no = os.path.splitext(original_name)[0].strip()
+                
+                if not _is_allowed_script_file(f):
+                    failed_msgs.append(f"{original_name} (Unsupported format)")
+                    continue
+                
+                student = User.objects.filter(roll_number__iexact=roll_no, role='student', status='approved').first()
+                if not student:
+                    failed_msgs.append(f"{original_name} (Roll No not found)")
+                    continue
+                    
+                if not Enrollment.objects.filter(course=assignment.course, student=student, status='approved').exists():
+                    failed_msgs.append(f"{original_name} (Student not enrolled)")
+                    continue
+                
+                AnswerScript.objects.update_or_create(
+                    exam=exam, student=student,
+                    defaults={'file': f, 'uploaded_by': request.user}
+                )
+                success_count += 1
+            
+            if success_count > 0:
+                messages.success(request, f'Successfully bulk uploaded {success_count} script(s).')
+            for msg in failed_msgs:
+                messages.error(request, f'Failed file: {msg}')
         else:
-            messages.error(request, 'Please choose a file to upload.')
+            messages.error(request, 'Please provide valid inputs to upload files.')
+        
         return redirect('ta_upload_scripts', assignment_id=assignment.id, exam_id=exam.id)
 
     existing_scripts = AnswerScript.objects.filter(exam=exam).select_related('student')
@@ -1575,3 +1642,28 @@ def admin_user_action(request, user_id, action):
     elif ret_role == 'ta':
         return redirect('admin_manage_tas')
     return redirect('admin_dashboard')
+@login_required
+def serve_answer_script(request, script_id):
+    script = get_object_or_404(AnswerScript, id=script_id)
+    course = script.exam.course
+
+    is_authorized = False
+    if request.user.role == 'student':
+        if request.user == script.student and Enrollment.objects.filter(course=course, student=request.user, status='approved').exists():
+            is_authorized = True
+    elif request.user.role == 'professor':
+        if request.user == course.professor:
+            is_authorized = True
+    elif request.user.role == 'ta':
+        if TAAssignment.objects.filter(course=course, ta=request.user).exists():
+            is_authorized = True
+    elif request.user.role == 'admin':
+        is_authorized = True
+
+    if not is_authorized:
+        return HttpResponseForbidden("You do not have permission to view this script.")
+
+    try:
+        return FileResponse(script.file.open('rb'), content_type='application/pdf')
+    except FileNotFoundError:
+        return HttpResponseForbidden("File not found.")
