@@ -441,7 +441,7 @@
     {% if user.is_authenticated %}
     <nav class="navbar">
         <h1 style="display: flex; align-items: center; gap: 16px;">
-            <a href="{% url 'login' %}">QPRS</a> — {{ user.get_role_display }}
+            <a href="{% url 'login' %}">QPRS</a> - {{ user.get_role_display }}
         </h1>
         <div style="display: flex; align-items: center; gap: 16px;">
 
@@ -451,7 +451,7 @@
                 <span class="notif-badge">{{ unread_notifications|length }}</span>
                 {% endif %}
             </button>
-            <span class="text-sm">{{ user.username }}</span>
+            <span class="text-sm">Hey {{ user.first_name }}</span>
             <a href="{% url 'change_password' %}" class="text-sm">Change Password</a>
             <form method="post" action="{% url 'logout' %}" class="nav-inline-form" id="logout-form">
                 {% csrf_token %}

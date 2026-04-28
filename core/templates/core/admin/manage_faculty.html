@@ -1,4 +1,60 @@
 {% extends "core/base.html" %}
+{% block content %}
+<div class="card mb-8" style="display: flex; justify-content: space-between; align-items: center;">
+    <h2 style="border: none; margin: 0; padding: 0;">Manage Faculty</h2>
+    <a href="{% url 'admin_add_faculty' %}" class="btn btn-primary btn-sm">+ Add Faculty</a>
+</div>
+
+<div class="card mb-8">
+    <h3>Active Faculty</h3>
+    <table>
+    <tr><th>Username</th><th>Name</th><th>Email</th><th>Faculty ID</th><th>Department</th><th>Action</th></tr>
+    {% for f in active %}
+    <tr>
+            <td>{{ f.username }}</td>
+            <td>{{ f.first_name }} {{ f.last_name }}</td>
+            <td>{{ f.email }}</td>
+            <td>{{ f.faculty_id|default:"N/A" }}</td>
+            <td>{{ f.department }}</td>
+            <td>
+                <form method="post" action="{% url 'admin_user_action' f.id 'disable' %}">{% csrf_token %}
+                    <button type="submit" class="btn btn-secondary btn-sm">Disable</button>
+                </form>
+            </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" class="text-center text-muted">No active faculty.</td></tr>
+    {% endfor %}
+    </table>
+</div>
+
+<div class="card">
+    <h3>Disabled Faculty</h3>
+    <table>
+    <tr><th>Username</th><th>Name</th><th>Email</th><th>Faculty ID</th><th>Department</th><th>Action</th></tr>
+    {% for f in disabled %}
+    <tr>
+            <td>{{ f.username }}</td>
+            <td>{{ f.first_name }} {{ f.last_name }}</td>
+            <td>{{ f.email }}</td>
+            <td>{{ f.faculty_id|default:"N/A" }}</td>
+            <td>{{ f.department }}</td>
+            <td>
+                <form method="post" action="{% url 'admin_user_action' f.id 'enable' %}">{% csrf_token %}
+                    <button type="submit" class="btn btn-success btn-sm">Enable</button>
+                </form>
+                <form method="post" action="{% url 'admin_user_action' f.id 'reject' %}" style="margin-top:6px;">{% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+            </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6" class="text-center text-muted">No disabled faculty.</td></tr>
+    {% endfor %}
+    </table>
+</div>
+{% endblock %}
+{% extends "core/base.html" %}
 
 {% block content %}
 <div class="card mb-8" style="display: flex; justify-content: space-between; align-items: center;">

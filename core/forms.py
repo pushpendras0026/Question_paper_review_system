@@ -197,6 +197,11 @@ class AdminAddTAForm(forms.ModelForm):
 
 class StudentSignupForm(forms.ModelForm):
     department = forms.ChoiceField(choices=DEPARTMENT_CHOICES)
+    faculty_advisor = forms.ModelChoiceField(
+        queryset=User.objects.filter(role='professor'),
+        required=True,
+        label="Faculty Advisor"
+    )
     password = forms.CharField(widget=forms.PasswordInput, required=True, label="Password")
 
     class Meta:
@@ -221,13 +226,16 @@ class StudentSignupForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.role = 'student'
+        user.status = 'pending'
         user.is_active = False  # Needs admin approval
         user.set_password(self.cleaned_data['password'])
         if commit:
             user.save()
+            advisor = self.cleaned_data.get('faculty_advisor')
+            if advisor:
+                from .models import FacultyAdvisor
+                FacultyAdvisor.objects.update_or_create(student=user, defaults={'advisor': advisor})
         return user
-
-
 
 class AdminForceEnrollForm(forms.Form):
     roll_number = forms.CharField(max_length=50, label='Student Roll Number')

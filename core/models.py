@@ -12,6 +12,11 @@ class User(AbstractUser):
         ('ta', 'TA'),
     ]
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    status = models.CharField(max_length=20, default='approved', choices=[
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('disabled', 'Disabled'),
+    ])
     roll_number = models.CharField(max_length=50, unique=True, null=True, blank=True)
     faculty_id = models.CharField(max_length=50, unique=True, null=True, blank=True)
     department = models.CharField(max_length=100, null=True, blank=True)

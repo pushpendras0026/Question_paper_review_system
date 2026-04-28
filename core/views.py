@@ -264,7 +264,10 @@ def login_view(request):
             try:
                 user_obj = User.objects.get(username=username)
                 if not user_obj.is_active:
-                    messages.error(request, 'Your profile is pending admin approval.')
+                    if user_obj.status == 'pending':
+                        messages.error(request, 'Your profile is pending admin approval.')
+                    else:
+                        messages.error(request, 'Your profile has been disabled by admin.')
                     return render(request, 'core/login.html', {'form': form})
             except User.DoesNotExist:
                 pass
@@ -1516,26 +1519,59 @@ def mark_all_notifications_read(request):
 @role_required('admin')
 def admin_manage_students(request):
     students = User.objects.filter(role='student').order_by('-date_joined')
-    return render(request, 'core/admin/manage_students.html', {'students': students})
-
-@login_required
-@role_required('admin')
-def admin_approve_student(request, student_id):
-    student = get_object_or_404(User, id=student_id, role='student')
-    if request.method == 'POST':
-        student.is_active = True
-        student.save()
-        messages.success(request, f'Student {student.username} approved.')
-    return redirect('admin_manage_students')
+    pending = students.filter(status='pending')
+    active = students.filter(status='approved')
+    disabled = students.filter(status='disabled')
+    return render(request, 'core/admin/manage_students.html', {
+        'pending': pending, 'active': active, 'disabled': disabled
+    })
 
 @login_required
 @role_required('admin')
 def admin_manage_faculty(request):
     faculty = User.objects.filter(role='professor').order_by('department', 'username')
-    return render(request, 'core/admin/manage_faculty.html', {'faculty': faculty})
+    active = faculty.filter(status='approved')
+    disabled = faculty.filter(status='disabled')
+    return render(request, 'core/admin/manage_faculty.html', {'active': active, 'disabled': disabled})
 
 @login_required
 @role_required('admin')
 def admin_manage_tas(request):
     tas = User.objects.filter(role='ta').order_by('department', 'username')
-    return render(request, 'core/admin/manage_tas.html', {'tas': tas})
+    active = tas.filter(status='approved')
+    disabled = tas.filter(status='disabled')
+    return render(request, 'core/admin/manage_tas.html', {'active': active, 'disabled': disabled})
+
+@login_required
+@role_required('admin')
+def admin_user_action(request, user_id, action):
+    user_target = get_object_or_404(User, id=user_id)
+    ret_role = user_target.role
+    uname = user_target.username
+    if request.method == 'POST':
+        if action == 'approve':
+            user_target.is_active = True
+            user_target.status = 'approved'
+            user_target.save()
+            messages.success(request, f'User {uname} approved.')
+        elif action == 'reject':
+            user_target.delete()
+            messages.success(request, f'User {uname} rejected and deleted.')
+        elif action == 'disable':
+            user_target.is_active = False
+            user_target.status = 'disabled'
+            user_target.save()
+            messages.success(request, f'User {uname} disabled.')
+        elif action == 'enable':
+            user_target.is_active = True
+            user_target.status = 'approved'
+            user_target.save()
+            messages.success(request, f'User {uname} enabled.')
+
+    if ret_role == 'student':
+        return redirect('admin_manage_students')
+    elif ret_role == 'professor':
+        return redirect('admin_manage_faculty')
+    elif ret_role == 'ta':
+        return redirect('admin_manage_tas')
+    return redirect('admin_dashboard')

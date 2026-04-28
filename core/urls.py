@@ -49,9 +49,9 @@ urlpatterns = [
     path('app-admin/add-student/', views.admin_add_student, name='admin_add_student'),
     path('app-admin/add-ta/', views.admin_add_ta, name='admin_add_ta'),
     path('app-admin/manage-students/', views.admin_manage_students, name='admin_manage_students'),
-    path('app-admin/manage-students/<int:student_id>/approve/', views.admin_approve_student, name='admin_approve_student'),
     path('app-admin/manage-faculty/', views.admin_manage_faculty, name='admin_manage_faculty'),
     path('app-admin/manage-tas/', views.admin_manage_tas, name='admin_manage_tas'),
+    path('app-admin/user-action/<int:user_id>/<str:action>/', views.admin_user_action, name='admin_user_action'),
     path('app-admin/course/<int:course_id>/grades/', views.admin_view_course_grades, name='admin_view_course_grades'),
     path('app-admin/course/<int:course_id>/notify-grade-pending/', views.admin_notify_grade_pending, name='admin_notify_grade_pending'),
 

@@ -6,25 +6,51 @@
     <a href="{% url 'admin_add_ta' %}" class="btn btn-primary btn-sm">+ Add TA</a>
 </div>
 
-<div class="card">
+<div class="card mb-8">
+    <h3>Active TAs</h3>
     <table>
-        <tr>
-            <th>Username</th>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Roll Number</th>
-            <th>Department</th>
-        </tr>
-        {% for ta in tas %}
+        <tr><th>Username</th><th>Name</th><th>Email</th><th>Roll Number</th><th>Department</th><th>Action</th></tr>
+        {% for ta in active %}
         <tr>
             <td>{{ ta.username }}</td>
             <td>{{ ta.first_name }} {{ ta.last_name }}</td>
             <td>{{ ta.email }}</td>
             <td>{{ ta.roll_number|default:"N/A" }}</td>
             <td>{{ ta.department }}</td>
+            <td>
+                <form method="post" action="{% url 'admin_user_action' ta.id 'disable' %}">{% csrf_token %}
+                    <button type="submit" class="btn btn-secondary btn-sm">Disable</button>
+                </form>
+            </td>
         </tr>
         {% empty %}
-        <tr><td colspan="5" class="text-center text-muted">No Teaching Assistants found.</td></tr>
+        <tr><td colspan="6" class="text-center text-muted">No active Teaching Assistants.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+
+<div class="card">
+    <h3>Disabled TAs</h3>
+    <table>
+        <tr><th>Username</th><th>Name</th><th>Email</th><th>Roll Number</th><th>Department</th><th>Action</th></tr>
+        {% for ta in disabled %}
+        <tr>
+            <td>{{ ta.username }}</td>
+            <td>{{ ta.first_name }} {{ ta.last_name }}</td>
+            <td>{{ ta.email }}</td>
+            <td>{{ ta.roll_number|default:"N/A" }}</td>
+            <td>{{ ta.department }}</td>
+            <td>
+                <form method="post" action="{% url 'admin_user_action' ta.id 'enable' %}">{% csrf_token %}
+                    <button type="submit" class="btn btn-success btn-sm">Enable</button>
+                </form>
+                <form method="post" action="{% url 'admin_user_action' ta.id 'reject' %}" style="margin-top:6px;">{% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="text-center text-muted">No disabled Teaching Assistants.</td></tr>
         {% endfor %}
     </table>
 </div>
