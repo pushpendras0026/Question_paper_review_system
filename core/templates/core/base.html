@@ -21,12 +21,20 @@
             background: #efefef;
             color: #333;
             line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
 
         /* Navbar */
         .navbar {
             background: #1a202c;
             color: white;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            width: 100%;
             padding: 14px 28px;
             display: flex;
             justify-content: space-between;
@@ -71,8 +79,10 @@
         /* Layout */
         .container {
             max-width: 1000px;
-            margin: 32px auto;
+            width: 100%;
+            margin: 80px auto 32px; /* Increased top margin for fixed navbar */
             padding: 0 16px;
+            flex: 1;
         }
 
         /* Card */
@@ -461,7 +471,7 @@
     </nav>
     {% endif %}
 
-    <div class="container">
+    <div class="container" >
 
 
 {% block back_button %}
@@ -532,5 +542,10 @@
         </div>
     </div>
     {% endif %}
+
+    <footer style="text-align: center; padding: 20px; border-top: 1px solid #ddd; font-size: 13px; color: #666; background: #fff; margin-top: auto; width: 100%;">
+        <p>&copy; {% now "Y" %} IIT Guwahati. All rights reserved.</p>
+        <p style="margin-top: 5px;">Created by: Aditya Garg, Pushpendra Singh, Nilay Mittal, and Rachit Gupta</p>
+    </footer>
 </body>
 </html>
