@@ -25,7 +25,7 @@ urlpatterns = [
     path('professor/course/<int:course_id>/', views.professor_course_detail, name='professor_course_detail'),
     path('professor/course/<int:course_id>/add-exam/', views.professor_add_exam, name='professor_add_exam'),
     path('professor/exam/<int:exam_id>/edit/', views.professor_edit_exam, name='professor_edit_exam'),
-    path('professor/exam/<int:exam_id>/add-section/', views.professor_add_section, name='professor_add_section'),
+
     path('professor/exam/<int:exam_id>/upload-scripts/', views.professor_upload_scripts, name='professor_upload_scripts'),
     path('professor/exam/<int:exam_id>/marks/', views.professor_enter_marks, name='professor_enter_marks'),
     path('professor/exam/<int:exam_id>/upload-csv/', views.professor_upload_csv_marks, name='professor_upload_csv_marks'),

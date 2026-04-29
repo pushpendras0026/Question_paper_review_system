@@ -20,57 +20,23 @@
         <table>
             <tr>
                 <th>Student</th>
-                {% for section in sections %}
-                <th>{{ section.name }}</th>
-                <th>Comment</th>
-                {% endfor %}
-                <th>Total</th>
+                <th>Marks</th>
                 <th>Comment</th>
             </tr>
             {% for e in enrolled_students %}
             <tr>
                 <td>{{ e.student.username }}</td>
-                {% for section in sections %}
                 <td>
                     {% with sid=e.student.id|stringformat:'d' %}
-                    {% with secid=section.id|stringformat:'d' %}
-                    {% with key=sid|add:'_'|add:secid %}
-                    {% with mark_row=existing_marks|get_item:key %}
-                    <input type="number" step="0.01" min="0" max="{{ exam.max_marks }}" name="marks_{{ e.student.id }}_{{ section.id }}"
-                           value="{{ mark_row.marks|default:'' }}"
-                           style="width:80px;">
-                    {% endwith %}
-                    {% endwith %}
+                    {% with mark_row=existing_marks|get_item:sid %}
+                    <input type="number" step="0.01" min="0" max="{{ exam.max_marks }}" name="marks_{{ e.student.id }}" style="width:100px;" value="{{ mark_row.marks|default:'' }}">
                     {% endwith %}
                     {% endwith %}
                 </td>
                 <td>
                     {% with sid=e.student.id|stringformat:'d' %}
-                    {% with secid=section.id|stringformat:'d' %}
-                    {% with key=sid|add:'_'|add:secid %}
-                    {% with mark_row=existing_marks|get_item:key %}
-                    <input type="text" name="comment_{{ e.student.id }}_{{ section.id }}" style="width:120px;" placeholder="Optional comment" value="{{ mark_row.comment|default:'' }}">
-                    {% endwith %}
-                    {% endwith %}
-                    {% endwith %}
-                    {% endwith %}
-                </td>
-                {% endfor %}
-                <td>
-                    {% with sid=e.student.id|stringformat:'d' %}
-                    {% with key=sid|add:'_total' %}
-                    {% with mark_row=existing_marks|get_item:key %}
-                    <input type="number" step="0.01" min="0" max="{{ exam.max_marks }}" name="marks_{{ e.student.id }}_total" style="width:80px;" value="{{ mark_row.marks|default:'' }}">
-                    {% endwith %}
-                    {% endwith %}
-                    {% endwith %}
-                </td>
-                <td>
-                    {% with sid=e.student.id|stringformat:'d' %}
-                    {% with key=sid|add:'_total' %}
-                    {% with mark_row=existing_marks|get_item:key %}
-                    <input type="text" name="comment_{{ e.student.id }}_total" style="width:120px;" placeholder="Optional comment" value="{{ mark_row.comment|default:'' }}">
-                    {% endwith %}
+                    {% with mark_row=existing_marks|get_item:sid %}
+                    <input type="text" name="comment_{{ e.student.id }}" style="width:150px;" placeholder="Optional comment" value="{{ mark_row.comment|default:'' }}">
                     {% endwith %}
                     {% endwith %}
                 </td>
@@ -85,11 +51,10 @@
 <div class="card">
     <h2>Mark Change History</h2>
     <table>
-        <tr><th>Student</th><th>Section</th><th>Old Marks</th><th>Current Marks</th><th>Comment</th></tr>
+        <tr><th>Student</th><th>Old Marks</th><th>Current Marks</th><th>Comment</th></tr>
         {% for row in history_rows %}
         <tr>
             <td>{{ row.student.username }}</td>
-            <td>{{ row.section.name|default:"Total" }}</td>
             <td>{{ row.old_marks|default:"-" }}</td>
             <td>{{ row.marks }}</td>
             <td>{{ row.comment|default:"-" }}</td>

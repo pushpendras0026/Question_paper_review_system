@@ -15,10 +15,9 @@
     <h3 class="mt-16">Your Marks</h3>
     {% if marks %}
     <table>
-        <tr><th>Section</th><th>Marks</th></tr>
+        <tr><th>Marks</th></tr>
         {% for m in marks %}
         <tr>
-            <td>{{ m.section.name|default:"Total" }}</td>
             <td>{{ m.marks }}</td>
         </tr>
         {% endfor %}

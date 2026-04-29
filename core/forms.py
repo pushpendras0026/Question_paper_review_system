@@ -1,7 +1,7 @@
 from django import forms
 from django.utils import timezone
 from .models import (
-    User, Course, Exam, ExamSection, AnswerScript, Mark, Query,
+    User, Course, Exam, AnswerScript, Mark, Query,
     TAAssignment, Enrollment
 )
 
@@ -63,11 +63,6 @@ class ExamForm(forms.ModelForm):
             'query_window_end': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
         }
 
-
-class ExamSectionForm(forms.ModelForm):
-    class Meta:
-        model = ExamSection
-        fields = ['name']
 
 
 class AnswerScriptUploadForm(forms.Form):

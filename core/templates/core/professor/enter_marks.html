@@ -20,34 +20,16 @@
         <table>
             <tr>
                 <th>Student</th>
-                {% for section in sections %}
-                <th>{{ section.name }}</th>
-                {% endfor %}
-                <th>Total</th>
+                <th>Marks</th>
             </tr>
             {% for e in enrolled_students %}
             <tr>
                 <td>{{ e.student.username }}</td>
-                {% for section in sections %}
                 <td>
                     {% with sid=e.student.id|stringformat:'d' %}
-                    {% with secid=section.id|stringformat:'d' %}
-                    {% with key=sid|add:'_'|add:secid %}
-                    <input type="number" step="0.01" min="0" max="{{ exam.max_marks }}" name="marks_{{ e.student.id }}_{{ section.id }}"
-                           value="{{ existing_marks|get_item:key|default:'' }}"
-                           style="width:80px;">
-                    {% endwith %}
-                    {% endwith %}
-                    {% endwith %}
-                </td>
-                {% endfor %}
-                <td>
-                    {% with sid=e.student.id|stringformat:'d' %}
-                    {% with key=sid|add:'_total' %}
-                    <input type="number" step="0.01" min="0" max="{{ exam.max_marks }}" name="marks_{{ e.student.id }}_total"
-                           value="{{ existing_marks|get_item:key|default:'' }}"
-                           style="width:80px;">
-                    {% endwith %}
+                    <input type="number" step="0.01" min="0" max="{{ exam.max_marks }}" name="marks_{{ e.student.id }}"
+                           value="{{ existing_marks|get_item:sid|default:'' }}"
+                           style="width:100px;">
                     {% endwith %}
                 </td>
             </tr>
@@ -59,17 +41,15 @@
 
 {% if enrolled_students %}
 <div class="card">
-    <h2>Current Total Marks Snapshot</h2>
+    <h2>Current Marks Snapshot</h2>
     <table>
-        <tr><th>Student</th><th>Total Marks</th></tr>
+        <tr><th>Student</th><th>Marks</th></tr>
         {% for e in enrolled_students %}
         <tr>
             <td>{{ e.student.username }}</td>
             <td>
                 {% with sid=e.student.id|stringformat:'d' %}
-                {% with key=sid|add:'_total' %}
-                {{ existing_marks|get_item:key|default:"-" }}
-                {% endwith %}
+                {{ existing_marks|get_item:sid|default:"-" }}
                 {% endwith %}
             </td>
         </tr>

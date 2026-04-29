@@ -12,16 +12,14 @@
     <a href="{% url 'professor_add_exam' course.id %}" class="btn btn-success btn-sm mb-8">+ Add Exam</a>
     {% if exams %}
     <table>
-        <tr><th>Exam</th><th>Weightage</th><th>Max Marks</th><th>Sections</th><th>Actions</th></tr>
+        <tr><th>Exam</th><th>Weightage</th><th>Max Marks</th><th>Actions</th></tr>
         {% for exam in exams %}
         <tr>
             <td>{{ exam.name }}</td>
             <td>{{ exam.weightage }}</td>
             <td>{{ exam.max_marks }}</td>
-            <td>{{ exam.sections.count }} sections</td>
             <td>
                 <a href="{% url 'professor_edit_exam' exam.id %}" class="btn btn-secondary btn-sm">Edit Weightage</a>
-                <a href="{% url 'professor_add_section' exam.id %}" class="btn btn-secondary btn-sm">+ Section</a>
                 <a href="{% url 'professor_upload_scripts' exam.id %}" class="btn btn-primary btn-sm">Upload Scripts</a>
                 <a href="{% url 'professor_enter_marks' exam.id %}" class="btn btn-primary btn-sm">Enter Marks</a>
             </td>

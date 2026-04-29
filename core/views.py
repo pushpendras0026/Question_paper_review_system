@@ -20,7 +20,7 @@ from .models import (
     AnswerScript, Mark, Query, TAAssignment, Notification
 )
 from .forms import (
-    LoginForm, CourseForm, ExamForm, ExamSectionForm, AnswerScriptUploadForm,
+    LoginForm, CourseForm, ExamForm, AnswerScriptUploadForm,
     MarkForm, QueryForm, QueryResponseForm, TAAssignmentForm,
     FacultyAdvisorForm, AdminAddFacultyForm, AdminAddStudentForm, AdminAddTAForm,
     AdminForceEnrollForm, StudentSignupForm
@@ -413,7 +413,7 @@ def student_view_scripts(request, course_id, exam_id):
     )
     exam = get_object_or_404(Exam, id=exam_id, course_id=course_id)
     script = AnswerScript.objects.filter(exam=exam, student=request.user).first()
-    marks = Mark.objects.filter(exam=exam, student=request.user)
+    marks = Mark.objects.filter(exam=exam, student=request.user, section=None)
     queries = Query.objects.filter(
         answer_script__exam=exam, answer_script__student=request.user
     ) if script else []
@@ -677,25 +677,6 @@ def professor_edit_exam(request, exam_id):
 
 @login_required
 @role_required('professor')
-def professor_add_section(request, exam_id):
-    exam = get_object_or_404(Exam, id=exam_id, course__professor=request.user)
-    if request.method == 'POST':
-        form = ExamSectionForm(request.POST)
-        if form.is_valid():
-            section = form.save(commit=False)
-            section.exam = exam
-            section.save()
-            messages.success(request, f'Section "{section.name}" added.')
-            return redirect('professor_course_detail', course_id=exam.course_id)
-    else:
-        form = ExamSectionForm()
-    return render(request, 'core/professor/add_section.html', {
-        'form': form, 'exam': exam
-    })
-
-
-@login_required
-@role_required('professor')
 def professor_upload_scripts(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id, course__professor=request.user)
     enrolled_students = Enrollment.objects.filter(
@@ -772,44 +753,25 @@ def professor_enter_marks(request, exam_id):
     enrolled_students = Enrollment.objects.filter(
         course=exam.course, status='approved'
     ).select_related('student')
-    sections = exam.sections.all()
 
     if request.method == 'POST':
         saved_count = 0
         skipped_count = 0
         for enrollment in enrolled_students:
             student = enrollment.student
-            if sections.exists():
-                for section in sections:
-                    marks_val = request.POST.get(f'marks_{student.id}_{section.id}')
-                    if marks_val:
-                        try:
-                            parsed_marks = Decimal(marks_val)
-                        except (InvalidOperation, TypeError):
-                            skipped_count += 1
-                            continue
-                        if parsed_marks < 0 or parsed_marks > exam.max_marks:
-                            skipped_count += 1
-                            continue
-                        Mark.objects.update_or_create(
-                            exam=exam, student=student, section=section,
-                            defaults={'marks': parsed_marks}
-                        )
-                        saved_count += 1
-            # Total marks (no section)
-            total_marks = request.POST.get(f'marks_{student.id}_total')
-            if total_marks:
+            marks_val = request.POST.get(f'marks_{student.id}')
+            if marks_val:
                 try:
-                    parsed_total = Decimal(total_marks)
+                    parsed_marks = Decimal(marks_val)
                 except (InvalidOperation, TypeError):
                     skipped_count += 1
                     continue
-                if parsed_total < 0 or parsed_total > exam.max_marks:
+                if parsed_marks < 0 or parsed_marks > exam.max_marks:
                     skipped_count += 1
                     continue
                 Mark.objects.update_or_create(
                     exam=exam, student=student, section=None,
-                    defaults={'marks': parsed_total}
+                    defaults={'marks': parsed_marks}
                 )
                 saved_count += 1
 
@@ -821,14 +783,12 @@ def professor_enter_marks(request, exam_id):
 
     # Get existing marks
     existing_marks = {}
-    for mark in Mark.objects.filter(exam=exam):
-        key = f'{mark.student_id}_{mark.section_id or "total"}'
-        existing_marks[key] = mark.marks
+    for mark in Mark.objects.filter(exam=exam, section=None):
+        existing_marks[str(mark.student_id)] = mark.marks
 
     return render(request, 'core/professor/enter_marks.html', {
         'exam': exam,
         'enrolled_students': enrolled_students,
-        'sections': sections,
         'existing_marks': existing_marks,
     })
 
@@ -1439,49 +1399,21 @@ def ta_update_marks(request, assignment_id, exam_id):
     enrolled_students = Enrollment.objects.filter(
         course=assignment.course, status='approved'
     ).select_related('student')
-    sections = exam.sections.all()
 
     if request.method == 'POST':
         saved_count = 0
         skipped_count = 0
         for enrollment in enrolled_students:
             student = enrollment.student
-            if sections.exists():
-                for section in sections:
-                    marks_val = request.POST.get(f'marks_{student.id}_{section.id}')
-                    comment = request.POST.get(f'comment_{student.id}_{section.id}', '')
-                    if marks_val:
-                        try:
-                            parsed_marks = Decimal(marks_val)
-                        except (InvalidOperation, TypeError):
-                            skipped_count += 1
-                            continue
-                        if parsed_marks < 0 or parsed_marks > exam.max_marks:
-                            skipped_count += 1
-                            continue
-
-                        old_mark = Mark.objects.filter(
-                            exam=exam, student=student, section=section
-                        ).first()
-                        old_val = old_mark.marks if old_mark else None
-                        Mark.objects.update_or_create(
-                            exam=exam, student=student, section=section,
-                            defaults={
-                                'marks': parsed_marks,
-                                'old_marks': old_val,
-                                'comment': comment or None,
-                            }
-                        )
-                        saved_count += 1
-            total_marks = request.POST.get(f'marks_{student.id}_total')
-            comment = request.POST.get(f'comment_{student.id}_total', '')
-            if total_marks:
+            marks_val = request.POST.get(f'marks_{student.id}')
+            comment = request.POST.get(f'comment_{student.id}', '')
+            if marks_val:
                 try:
-                    parsed_total = Decimal(total_marks)
+                    parsed_marks = Decimal(marks_val)
                 except (InvalidOperation, TypeError):
                     skipped_count += 1
                     continue
-                if parsed_total < 0 or parsed_total > exam.max_marks:
+                if parsed_marks < 0 or parsed_marks > exam.max_marks:
                     skipped_count += 1
                     continue
 
@@ -1492,7 +1424,7 @@ def ta_update_marks(request, assignment_id, exam_id):
                 Mark.objects.update_or_create(
                     exam=exam, student=student, section=None,
                     defaults={
-                        'marks': parsed_total,
+                        'marks': parsed_marks,
                         'old_marks': old_val,
                         'comment': comment or None,
                     }
@@ -1506,21 +1438,19 @@ def ta_update_marks(request, assignment_id, exam_id):
         return redirect('ta_update_marks', assignment_id=assignment.id, exam_id=exam.id)
 
     existing_marks = {}
-    for mark in Mark.objects.filter(exam=exam):
-        key = f'{mark.student_id}_{mark.section_id or "total"}'
-        existing_marks[key] = {
+    for mark in Mark.objects.filter(exam=exam, section=None):
+        existing_marks[str(mark.student_id)] = {
             'marks': mark.marks,
             'old_marks': mark.old_marks,
             'comment': mark.comment,
         }
 
-    history_rows = Mark.objects.filter(exam=exam).select_related('student', 'section').order_by('student__username', 'section__name')
+    history_rows = Mark.objects.filter(exam=exam, section=None).select_related('student').order_by('student__username')
 
     return render(request, 'core/ta/update_marks.html', {
         'assignment': assignment,
         'exam': exam,
         'enrolled_students': enrolled_students,
-        'sections': sections,
         'existing_marks': existing_marks,
         'history_rows': history_rows,
     })
